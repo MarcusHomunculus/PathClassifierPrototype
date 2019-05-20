@@ -41,6 +41,11 @@ class WorkerCreator:
         birthday: datetime
         skills: List[str]
 
+        def __str__(self):
+            return "{} with personal No \"{}\" is {} years old (birthday {}) and works as {} (skills: {})".format(
+                self.name, self.id, self.age, self.birthday, self.job, self.skills
+            )
+
     def __init__(self, worker_count: int):
         random.seed(42)     # ensure reproducibility
         start: int = 100000
@@ -56,6 +61,8 @@ class WorkerCreator:
             d: int = 182    # 365 / 2
             days = timedelta(days=random.randrange(-d, d))
             current_worker.birthday = datetime.date.today() + days
+            # correct the year of the birthday
+            current_worker.birthday.year -= current_worker.age
             current_worker.job = self.draw_job()
             current_worker.skills = self.__skill_pool[current_worker.job][0]
             # draw a stick if the current worker has some "bonus" skills
