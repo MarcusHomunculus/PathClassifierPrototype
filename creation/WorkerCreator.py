@@ -1,16 +1,18 @@
-from .NameList import NameList, AttrList
 from typing import List, Dict, Tuple
 import datetime
 import random
 from datetime import timedelta
+from creation.NameProvider import NameProvider
+from json import JSONEncoder
 
 
 class WorkerCreator:
 
+    # "constants"
     job_boss = "boss"
     job_engineer = "engineer"
     job_warehouseman = "warehouseman"
-    job_office = "human resource"
+    job_office = "paper pusher"     # :p -- aka office worker
     job_mechanic = "mechanic"
     job_electrician = "electrician"
     ability_economic = "Economics degree"
@@ -21,18 +23,7 @@ class WorkerCreator:
     ability_mechanic = "mechanical training"
     ability_electric = "electrical training"
 
-    __skill_pool: Dict[str, Tuple[List[str], List[str]]] = {
-        job_boss: ([ability_economic, ability_driving], [ability_engineering]),
-        job_engineer: ([ability_engineering, ability_driving], [ability_economic]),
-        job_warehouseman: ([ability_driving], [ability_forklift, ability_office]),
-        job_office: ([ability_office, ability_driving], ),
-        job_mechanic: ([ability_mechanic, ability_driving], [ability_forklift]),
-        job_electrician: ([ability_electric, ability_driving], [ability_office])
-    }
-
-    from json import JSONEncoder
-
-    class Worker(JSONEncoder):
+    class Worker:
         id: str
         name: str
         job: str
@@ -46,23 +37,30 @@ class WorkerCreator:
                 self.name, self.id, self.age, self.birthday, self.job, self.skills
             )
 
+    # fields
+    __skill_pool: Dict[str, Tuple[List[str], List[str]]] = {
+        job_boss: ([ability_economic, ability_driving], [ability_engineering]),
+        job_engineer: ([ability_engineering, ability_driving], [ability_economic]),
+        job_warehouseman: ([ability_driving], [ability_forklift, ability_office]),
+        job_office: ([ability_office, ability_driving], ),
+        job_mechanic: ([ability_mechanic, ability_driving], [ability_forklift]),
+        job_electrician: ([ability_electric, ability_driving], [ability_office])
+    }
+
+    _workers: List[Worker] = []
+
     def __init__(self, worker_count: int):
         random.seed(42)     # ensure reproducibility
         start: int = 100000
-        pre_pool = ["{:06d}".format(i) for i in range(start, start + worker_count)]
-        pool: List[str] = random.shuffle(pre_pool)
+        pool: List[str] = ["{:06d}".format(i) for i in range(start, start + worker_count)]
+        random.shuffle(pool)
         for i in range(worker_count):
             current_worker = WorkerCreator.Worker()
-            current_worker.id = pool(i)
-            current_worker.name = "{} {}".format(AttrList[random.randrange(len(AttrList))],
-                                                 NameList[random.randrange(len(NameList))])
+            current_worker.id = pool[i]
+            current_worker.name = NameProvider.get_name()
             current_worker.size = random.choice(["S", "M", "L", "XL"])
             current_worker.age = random.randrange(30, 55)
-            d: int = 182    # 365 / 2
-            days = timedelta(days=random.randrange(-d, d))
-            current_worker.birthday = datetime.date.today() + days
-            # correct the year of the birthday
-            current_worker.birthday.year -= current_worker.age
+            current_worker.birthday = self.draw_birthday(current_worker.age)
             current_worker.job = self.draw_job()
             current_worker.skills = self.__skill_pool[current_worker.job][0]
             # draw a stick if the current worker has some "bonus" skills
@@ -70,6 +68,12 @@ class WorkerCreator:
             if has_additional_skills:
                 # append to the existing list of skill names
                 current_worker.skills += self.__skill_pool[current_worker.job][1]
+            self._workers.append(current_worker)
+
+    def print_workers(self):
+        print("Content of class")
+        for worker in self._workers:
+            print(worker)
 
     @staticmethod
     def draw_job() -> str:
@@ -89,3 +93,20 @@ class WorkerCreator:
             return WorkerCreator.job_mechanic
         else:
             return WorkerCreator.job_electrician
+
+    @staticmethod
+    def draw_birthday(age: int) -> datetime:
+        d: int = 182    # 365 / 2
+        days = timedelta(days=random.randrange(-d, d))
+        bd = datetime.date.today() + days
+        try:
+            bd = bd.replace(year=bd.year - age)
+        except ValueError:
+            bd = bd.replace()
+        return bd
+
+
+if __name__ == "__main__":
+    # test the function
+    wc = WorkerCreator(5)
+    wc.print_workers()
