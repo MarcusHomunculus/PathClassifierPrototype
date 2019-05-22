@@ -3,7 +3,7 @@ import datetime
 import random
 from datetime import timedelta
 from creation.NameProvider import NameProvider
-from json import JSONEncoder
+import json
 
 
 class WorkerCreator:
@@ -36,6 +36,17 @@ class WorkerCreator:
             return "{} with personal No \"{}\" is {} years old (birthday {}) and works as {} (skills: {})".format(
                 self.name, self.id, self.age, self.birthday, self.job, self.skills
             )
+
+        def to_worker_dict(self):
+            return {
+                "ID": self.id,
+                "Name": self.name,
+                "Job": self.job,
+                "Size": self.size,
+                "Age": self.age,
+                "Birthday": self.birthday.strftime("%d.%m.%Y"),
+                "Skills": self.skills
+            }
 
     # fields
     __skill_pool: Dict[str, Tuple[List[str], List[str]]] = {
@@ -74,6 +85,12 @@ class WorkerCreator:
         print("Content of class")
         for worker in self._workers:
             print(worker)
+
+    def _to_worker_dict_list(self):
+        return [w.to_worker_dict() for w in self._workers]
+
+    def to_json(self, sort_keys=True, indent=2) -> str:
+        return json.dumps(self._to_worker_dict_list(), sort_keys=sort_keys, indent=indent)
 
     @staticmethod
     def draw_job() -> str:
