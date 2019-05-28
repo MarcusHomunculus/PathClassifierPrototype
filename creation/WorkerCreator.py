@@ -53,7 +53,7 @@ class WorkerCreator:
         job_boss: ([ability_economic, ability_driving], [ability_engineering]),
         job_engineer: ([ability_engineering, ability_driving], [ability_economic]),
         job_warehouseman: ([ability_driving], [ability_forklift, ability_office]),
-        job_office: ([ability_office, ability_driving], ),
+        job_office: ([ability_office, ability_driving], [ability_economic]),
         job_mechanic: ([ability_mechanic, ability_driving], [ability_forklift]),
         job_electrician: ([ability_electric, ability_driving], [ability_office])
     }
