@@ -4,6 +4,10 @@ import json
 
 
 class InitializationException(Exception):
+    """
+    Exception is intended for situations when a class should have been provided
+    with data before but wasn't
+    """
     pass
 
 
@@ -35,19 +39,34 @@ class Creator:
         """
         pass
 
-    def read_from_json(self, path_to_workers: str, path_to_sections: str):
-        with open(path_to_workers) as json_file:
-            workers = json.load(json_file)
-            for w in workers:
-                current = Creator._DataStruct()
-                for attr in w:
-                    if attr == "Skills":
-                        current.skills = w[attr]
-                        continue
-                    current.attributes[attr] = w[attr]
-                self.__workerList.append(current)
-        for w in self.__workerList:
-            print(w)
+    def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
+        """
+        Reads in the data from the 2 JSON-files in order to create data from
+        them
+        :param path_to_workers: the path to the file containing the worker
+                                definitions in JSON formatting
+        :param path_to_sections: the path to the file containing the section
+                                 definitions in JSON formatting
+        """
+        def read_in(path, target):
+            with open(path) as json_file:
+                workers = json.load(json_file)
+                for w in workers:
+                    current = Creator._DataStruct()
+                    for attr in w:
+                        if attr == "Skills":
+                            current.skills = w[attr]
+                            continue
+                        current.attributes[attr] = w[attr]
+                    target.append(current)
+        for t in ["workers", "sections"]:
+            if t == "workers":
+                read_in(path_to_workers, self.__workerList)
+            elif t == "sections":
+                read_in(path_to_sections, self.__sectionList)
+            else:
+                raise AttributeError(
+                    "No implementation to push {} to the internal members".format(t))
 
     def create_xlsx(self) -> None:
         if not self._has_internal_data():
