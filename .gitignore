@@ -3,3 +3,6 @@
 
 # python stuff
 */__pycache__
+
+# intermediate data files
+*.json
