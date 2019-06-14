@@ -8,7 +8,6 @@ class InitializationException(Exception):
     Exception is intended for situations when a class should have been provided
     with data before but wasn't
     """
-    pass
 
 
 class Creator:
@@ -33,11 +32,12 @@ class Creator:
     __sectionList: List[_DataStruct] = []
     __workerList: List[_DataStruct] = []
 
-    def __init__(self):
-        """
-        The constructor
-        """
-        pass
+	#
+    # def __init__(self):
+    #	"""
+    #	The constructor
+    #	"""
+    #	pass
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -68,18 +68,25 @@ class Creator:
                 raise AttributeError(
                     "No implementation to push {} to the internal members".format(t))
 
-    def create_xlsx(self) -> None:
+    def create_xlsx(self, file_name: str = "data.xlsx") -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-
-        # create the basic file
+        # create the sheet with the worker data
         wb = Workbook()
-        pass
+        # a blank sheet is created by default: use this instead of creating a new one
+        current = wb.active
+        current.title = "Workers"
+        current['B2'] = "Workers"
+        # foreach property of worker
+        wb.save(file_name)
+        # create the sheet with the sections
+        wb.create_sheet("Sections")
+        # create the sheet where to every section a worker is assigned
+        wb.create_sheet("Assignments")
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-        pass
 
     def _has_internal_data(self) -> bool:
         """
@@ -92,3 +99,4 @@ class Creator:
 if __name__ == "__main__":
     c = Creator()
     c.read_from_json("../workers.json", "../sections.json")
+    c.create_xlsx()
