@@ -1,6 +1,7 @@
 from openpyxl import Workbook
 from typing import Dict, List
 import json
+import math
 
 
 class InitializationException(Exception):
@@ -68,7 +69,7 @@ class Creator:
                 raise AttributeError(
                     "No implementation to push {} to the internal members".format(t))
 
-    def create_xlsx(self, file_name: str = "data.xlsx") -> None:
+    def create_xlsx(self, file_name: str = "../data.xlsx") -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
         # create the sheet with the worker data
@@ -78,6 +79,7 @@ class Creator:
         current.title = "Workers"
         current['B2'] = "Workers"
         # foreach property of worker
+        self._create_worker_table(current, 4, 2)
         wb.save(file_name)
         # create the sheet with the sections
         wb.create_sheet("Sections")
@@ -87,15 +89,42 @@ class Creator:
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-
+            
     def _has_internal_data(self) -> bool:
         """
         Checks if the members are filled with data else false is returned
         :return: true if all members hold data and are not empty lists
         """
         return len(self.__sectionList) != 0 and len(self.__workerList) != 0
+       
+    def _create_worker_table(self, workbook, start_row: int, start_column: int):
+        row_range = range(len(self.__workerList))
+        # use the first worker as template
+        worker_keys = self.__workerList[0].attributes.keys()
+        # create the table header
+        current_col = start_column
+        for key in worker_keys:
+            workbook.cell(row=start_row, column=current_col).value = str(key)
+            current_col += 1
+        for y in row_range:
+            current_col = start_column
+            for key in worker_keys:
+                cell = workbook.cell(row=start_row + 1 + y, column=current_col)
+                cell.value = str(self.__workerList[y].attributes[key])
+                current_col += 1
 
-
+#    @staticmethod
+#    def _build_tablllle_coordinate(column: int, row: int) -> str:
+#        letter_pool = [chr(i) for i in range(ord('a'), ord('a') + 26)]
+#        def to_multi_col(col_idx):
+#            letter_cnt = int(math.ceil(col_idx / 26))
+#            result = ""
+#            for ii in range(letter_cnt, 0, -1):
+#                idx = col_idx % (ii * 26)
+#                result += letter_pool[idx]
+#            return result
+#        return to_multi_col(column) + str(row - 1)    # -1 as xlsx starts indexing at 1
+#       
 if __name__ == "__main__":
     c = Creator()
     c.read_from_json("../workers.json", "../sections.json")
