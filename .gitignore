@@ -6,3 +6,4 @@
 
 # intermediate data files
 *.json
+*.xlsx

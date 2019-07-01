@@ -21,14 +21,18 @@ class Creator:
         """
         Works as a container / struct to organize the data for a worker
         """
-        attributes: Dict[str, str] = {}
-        skills: List[str] = []
+        attributes: Dict[str, str]
+        skills: List[str]
+        
+        def __init__(self):
+            self.attributes = {}
+            self.skills = []
 
         def __str__(self):
             s = "Content:\n"
             for attr in self.attributes:
                 s += "{} : {}\n".format(attr, self.attributes[attr])
-            return s + "List content: {}".format(self.skills)
+            return s + "List content: {}".format(str(self.skills))
 
     __sectionList: List[_DataStruct] = []
     __workerList: List[_DataStruct] = []
@@ -51,14 +55,14 @@ class Creator:
         """
         def read_in(path, target):
             with open(path) as json_file:
-                workers = json.load(json_file)
-                for w in workers:
+                entities = json.load(json_file)
+                for e in entities:
                     current = Creator._DataStruct()
-                    for attr in w:
+                    for attr in e:
                         if attr == "Skills":
-                            current.skills = w[attr]
+                            current.skills = e[attr]
                             continue
-                        current.attributes[attr] = w[attr]
+                        current.attributes[attr] = e[attr]
                     target.append(current)
         for t in ["workers", "sections"]:
             if t == "workers":
@@ -108,13 +112,17 @@ class Creator:
             current_col += 1
         for y in row_range:
             current_col = start_column
+            # TODO: remove current_worker after debug
+            current_worker = self.__workerList[y]
+            name = current_worker.attributes["Name"]
+            print("Current workers name is " + name)
             for key in worker_keys:
                 cell = workbook.cell(row=start_row + 1 + y, column=current_col)
                 cell.value = str(self.__workerList[y].attributes[key])
                 current_col += 1
 
 #    @staticmethod
-#    def _build_tablllle_coordinate(column: int, row: int) -> str:
+#    def _build_table_coordinate(column: int, row: int) -> str:
 #        letter_pool = [chr(i) for i in range(ord('a'), ord('a') + 26)]
 #        def to_multi_col(col_idx):
 #            letter_cnt = int(math.ceil(col_idx / 26))
