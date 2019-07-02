@@ -1,7 +1,7 @@
 from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 from typing import Dict, List
 import json
-import math
 
 
 class InitializationException(Exception):
@@ -109,30 +109,22 @@ class Creator:
         current_col = start_column
         for key in worker_keys:
             workbook.cell(row=start_row, column=current_col).value = str(key)
+            # adapt the width in the process
+            col_letter = get_column_letter(current_col)
+            # use the first worker as a template again
+            # take whatever is longer: key or content
+            content_width = len(str(self.__workerList[0].attributes[key]))
+            key_width = len(key)
+            width = key_width if key_width > content_width else content_width
+            workbook.column_dimensions[col_letter].width = 1.8 * width
             current_col += 1
         for y in row_range:
             current_col = start_column
-            # TODO: remove current_worker after debug
-            current_worker = self.__workerList[y]
-            name = current_worker.attributes["Name"]
-            print("Current workers name is " + name)
             for key in worker_keys:
                 cell = workbook.cell(row=start_row + 1 + y, column=current_col)
                 cell.value = str(self.__workerList[y].attributes[key])
                 current_col += 1
 
-#    @staticmethod
-#    def _build_table_coordinate(column: int, row: int) -> str:
-#        letter_pool = [chr(i) for i in range(ord('a'), ord('a') + 26)]
-#        def to_multi_col(col_idx):
-#            letter_cnt = int(math.ceil(col_idx / 26))
-#            result = ""
-#            for ii in range(letter_cnt, 0, -1):
-#                idx = col_idx % (ii * 26)
-#                result += letter_pool[idx]
-#            return result
-#        return to_multi_col(column) + str(row - 1)    # -1 as xlsx starts indexing at 1
-#       
 if __name__ == "__main__":
     c = Creator()
     c.read_from_json("../workers.json", "../sections.json")
