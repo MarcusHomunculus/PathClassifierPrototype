@@ -1,5 +1,6 @@
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Color, PatternFill, Alignment
 from typing import Dict, List
 import json
 
@@ -106,9 +107,16 @@ class Creator:
         # use the first worker as template
         worker_keys = self.__workerList[0].attributes.keys()
         # create the table header
+        header_fill = PatternFill(start_color='FFFFFF00',
+            end_color='FFFFFF00', fill_type='solid')
+        header_alignment = Alignment(horizontal='center')
         current_col = start_column
         for key in worker_keys:
-            workbook.cell(row=start_row, column=current_col).value = str(key)
+            current_cell = workbook.cell(row=start_row, column=current_col)
+            current_cell.value = str(key)
+            # do some styling
+            current_cell.fill = header_fill
+            current_cell.alignment = header_alignment
             # adapt the width in the process
             col_letter = get_column_letter(current_col)
             # use the first worker as a template again
