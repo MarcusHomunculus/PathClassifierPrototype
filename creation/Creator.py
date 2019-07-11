@@ -81,10 +81,8 @@ class Creator:
         wb = Workbook()
         # a blank sheet is created by default: use this instead of creating a new one
         current = wb.active
-        current.title = "Workers"
-        current['B2'] = "Workers"
         # foreach property of worker
-        self._create_worker_table(current, 4, 2)
+        self._create_worker_table(current, 4, 2, "Workers")
         wb.save(file_name)
         # create the sheet with the sections
         wb.create_sheet("Sections")
@@ -102,7 +100,9 @@ class Creator:
         """
         return len(self.__sectionList) != 0 and len(self.__workerList) != 0
        
-    def _create_worker_table(self, workbook, start_row: int, start_column: int):
+    def _create_worker_table(self, workbook, start_row: int, start_column: int, name: str, offset_row: int = 2, offset_col: int = 2):
+        workbook.title = name
+        workbook.cell(row=start_row, column=start_column).value = name
         row_range = range(len(self.__workerList))
         # use the first worker as template
         worker_keys = self.__workerList[0].attributes.keys()
@@ -110,9 +110,10 @@ class Creator:
         header_fill = PatternFill(start_color='FFFFFF00',
             end_color='FFFFFF00', fill_type='solid')
         header_alignment = Alignment(horizontal='center')
-        current_col = start_column
+        table_row = start_row + offset_row
+        current_col = start_column + offset_col
         for key in worker_keys:
-            current_cell = workbook.cell(row=start_row, column=current_col)
+            current_cell = workbook.cell(row=table_row, column=current_col)
             current_cell.value = str(key)
             # do some styling
             current_cell.fill = header_fill
@@ -129,7 +130,7 @@ class Creator:
         for y in row_range:
             current_col = start_column
             for key in worker_keys:
-                cell = workbook.cell(row=start_row + 1 + y, column=current_col)
+                cell = workbook.cell(row=table_row + 1 + y, column=current_col)
                 cell.value = str(self.__workerList[y].attributes[key])
                 current_col += 1
 
