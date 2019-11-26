@@ -24,14 +24,15 @@ def generate_json(worker_count: int) -> None:
 
 
 print("Step one: creating environment:")
-generateBase = input("Do you want me to generate data for you? (y/n)")
-if generateBase == "y" or generateBase == "Y":
+shall_generate_base = input("Do you want me to generate data for you? (y/n)")
+if shall_generate_base == "y" or shall_generate_base == "Y":
     # means to generate the json files from stock
-    generate_json(7)
-elif generateBase == "n" or generateBase == "N":
+    generate_json(10)
+
+elif shall_generate_base == "n" or shall_generate_base == "N":
     # pass here to cover all other inputs with the else branch
     pass
 else:
-    raise AttributeError("Could not map %s to a 'y' or 'n'".format(generateBase))
+    raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
 print("Done!")
