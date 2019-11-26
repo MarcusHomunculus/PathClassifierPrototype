@@ -24,7 +24,7 @@ class Creator:
         """
         attributes: Dict[str, str]
         skills: List[str]
-        
+
         def __init__(self):
             self.attributes = {}
             self.skills = []
@@ -38,7 +38,7 @@ class Creator:
     __sectionList: List[_DataStruct] = []
     __workerList: List[_DataStruct] = []
 
-	#
+    #
     # def __init__(self):
     #	"""
     #	The constructor
@@ -54,6 +54,7 @@ class Creator:
         :param path_to_sections: the path to the file containing the section
                                  definitions in JSON formatting
         """
+
         def read_in(path, target):
             with open(path) as json_file:
                 entities = json.load(json_file)
@@ -65,6 +66,7 @@ class Creator:
                             continue
                         current.attributes[attr] = e[attr]
                     target.append(current)
+
         for t in ["workers", "sections"]:
             if t == "workers":
                 read_in(path_to_workers, self.__workerList)
@@ -94,23 +96,22 @@ class Creator:
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-            
+
     def _has_internal_data(self) -> bool:
         """
         Checks if the members are filled with data else false is returned
         :return: true if all members hold data and are not empty lists
         """
         return len(self.__sectionList) != 0 and len(self.__workerList) != 0
-       
-    def _create_single_table(self, workbook, data: List[_DataStruct], start_row: int, start_column: int, name: str, offset_row: int = 2, offset_col: int = 0):
+
+    def _create_single_table(self, workbook, data: List[_DataStruct], start_row: int, start_column: int, name: str,
+                             offset_row: int = 2, offset_col: int = 0):
         workbook.cell(row=start_row, column=start_column).value = name
-        row_range = range(len(self.__workerList))
         # use the first data point as template
-        # self.__workerList[0].attributes.keys()
         header_keys = data[0].attributes.keys()
         # create the table header
         header_fill = PatternFill(start_color='FFFFFF00',
-            end_color='FFFFFF00', fill_type='solid')
+                                  end_color='FFFFFF00', fill_type='solid')
         header_alignment = Alignment(horizontal='center')
         table_row = start_row + offset_row
         current_col = start_column + offset_col
@@ -129,15 +130,31 @@ class Creator:
             width = key_width if key_width > content_width else content_width
             workbook.column_dimensions[col_letter].width = 1.8 * width
             current_col += 1
-        for y in row_range:
+        for y in range(len(data)):
             current_col = start_column + offset_col
             for key in header_keys:
                 cell = workbook.cell(row=table_row + 1 + y, column=current_col)
-                cell.value = str(data[y].attributes[key])
+                val = data[y].attributes[key]
+                # TODO: check if val is a list -> then do dedicated formatting: the default one is odd
+                cell.value = self.__val_to_string(val)
                 current_col += 1
-    
+
     def _create_cross_table(self, workbook, start_row: int, start_column: int):
         pass
+
+    @staticmethod
+    def __val_to_string(val) -> str:
+        if not isinstance(val, list):
+            # just fallback to the python default
+            return str(val)
+        if not val:
+            # means the list is empty
+            return ""
+        list_str = str(val[0])
+        for i in range(1, len(val)):
+            list_str += ", {}".format(val[i])
+        return list_str
+
 
 if __name__ == "__main__":
     c = Creator()
