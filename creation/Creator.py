@@ -3,7 +3,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Color, PatternFill, Alignment
 from typing import Dict, List
 import json
-
+from creation.SectionCreator import SectionCreator
 
 class InitializationException(Exception):
     """
@@ -116,6 +116,9 @@ class Creator:
         table_row = start_row + offset_row
         current_col = start_column + offset_col
         for key in header_keys:
+            # skip the team key: it is a dedicated file
+            if key == SectionCreator.TEAM_KEY:
+                continue
             current_cell = workbook.cell(row=table_row, column=current_col)
             current_cell.value = str(key)
             # do some styling
@@ -133,6 +136,8 @@ class Creator:
         for y in range(len(data)):
             current_col = start_column + offset_col
             for key in header_keys:
+                if key == SectionCreator.TEAM_KEY:
+                    continue
                 cell = workbook.cell(row=table_row + 1 + y, column=current_col)
                 val = data[y].attributes[key]
                 # TODO: check if val is a list -> then do dedicated formatting: the default one is odd

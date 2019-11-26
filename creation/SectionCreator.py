@@ -18,6 +18,7 @@ class SectionCreator:
     payment_stage_1 = 3000
     payment_stage_2 = 4000
     payment_stage_3 = 5000
+    TEAM_KEY = "Teams"
 
     __section_data = {
         section_name_h_r: ([WorkerCreator.ability_office],  # required skills
@@ -72,24 +73,6 @@ class SectionCreator:
                              ])
     }
 
-    # class Team:
-    #     name: str
-    #     size: float
-    #
-    #     def __init__(self, name: str, size: float):
-    #         self.name = name
-    #         self.size = size
-    #
-    #     def to_dict(self):
-    #         return {
-    #             "name": self.name,
-    #             "size": self.size
-    #         }
-    #
-    #     @staticmethod
-    #     def create(name: str, size: float):
-    #         return SectionCreator.Team(name, size)
-
     class Section:
         name: str
         abilities: List[str]
@@ -103,7 +86,7 @@ class SectionCreator:
                 "Abilities": self.abilities,
                 "PaymentStage": self.payment_level,
                 "NormalizedWorkerCount": self.worker_fraction,
-                "Teams": self.teams
+                SectionCreator.TEAM_KEY: self.teams
             }
 
     _sections: List[Section] = []
