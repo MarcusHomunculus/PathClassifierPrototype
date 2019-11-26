@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import json
 # to pull the string from there
 from creation.WorkerCreator import WorkerCreator
@@ -23,46 +23,87 @@ class SectionCreator:
         section_name_h_r: ([WorkerCreator.ability_office],  # required skills
                            [],                              # optional skills
                            payment_stage_1,                 # payment level
-                           1),                              # worker_fraction
+                           1,                               # worker_fraction
+                           [                                # teams
+                               ("Accounting", 0.8), ("Taxing", 0.2)
+                           ]),
         section_name_logistic: ([],
                                 [WorkerCreator.ability_forklift],
                                 payment_stage_0,
-                                1.5),
+                                1.5,
+                                [
+                                    ("Racking", 0.5), ("Forklift", 0.5)
+                                ]),
         section_name_r_d: ([WorkerCreator.ability_engineering],
                            [],
                            payment_stage_3,
-                           1),
+                           1,
+                           [
+                               ("Manufacturing", 0.3), ("Product development", 0.5), ("process planning", 0.2)
+                           ]),
         section_name_prod: ([],
                             [WorkerCreator.ability_electric, WorkerCreator.ability_mechanic],
                             payment_stage_1,
-                            4.5),
+                            4.5,
+                            [
+                                ("Electric installation", 0.3), ("Casing production", 0.4), ("QS", 0.3)
+                            ]),
         section_name_management: ([WorkerCreator.ability_economic],
                                   [WorkerCreator.ability_office],
                                   payment_stage_3,
-                                  0.5),
+                                  0.5,
+                                  [
+                                      ("Upper management", 0.1), ("Lower management", 0.4), ("Secretary offices", 0.5)
+                                  ]),
         section_name_marketing: ([WorkerCreator.ability_economic],
                                  [],
                                  payment_stage_2,
-                                 0.5),
+                                 0.5,
+                                 [
+                                     ("Advertisement", 0.5), ("Customer management", 0.5)
+                                 ]),
         section_name_field: ([WorkerCreator.ability_driving],
                              [WorkerCreator.ability_mechanic, WorkerCreator.ability_electric,
                              WorkerCreator.ability_engineering],
                              payment_stage_3,
-                             1)
+                             1,
+                             [
+                                 ("Field crew", 1.0)
+                             ])
     }
+
+    # class Team:
+    #     name: str
+    #     size: float
+    #
+    #     def __init__(self, name: str, size: float):
+    #         self.name = name
+    #         self.size = size
+    #
+    #     def to_dict(self):
+    #         return {
+    #             "name": self.name,
+    #             "size": self.size
+    #         }
+    #
+    #     @staticmethod
+    #     def create(name: str, size: float):
+    #         return SectionCreator.Team(name, size)
 
     class Section:
         name: str
         abilities: List[str]
         payment_level: int
         worker_fraction: float  # normalized to 10 workers
+        teams: Dict[str, float]
 
         def to_dict(self):
             return {
                 "Name": self.name,
                 "Abilities": self.abilities,
-                "PaymentStage": str(self.payment_level),
-                "NormalizedWorkerCount": str(self.worker_fraction)
+                "PaymentStage": self.payment_level,
+                "NormalizedWorkerCount": self.worker_fraction,
+                "Teams": self.teams
             }
 
     _sections: List[Section] = []
@@ -74,6 +115,10 @@ class SectionCreator:
             current_section.abilities = self.__section_data[section][0] + self.__section_data[section][1]
             current_section.payment_level = self.__section_data[section][2]
             current_section.worker_fraction = self.__section_data[section][3]
+            current_section.teams = {}
+            for team in self.__section_data[section][4]:
+                # a list of tuples
+                current_section.teams[team[0]] = team[1]
             self._sections.append(current_section)
 
     def to_json(self, sort_keys=False, indent=2) -> str:
