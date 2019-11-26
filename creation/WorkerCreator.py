@@ -89,7 +89,7 @@ class WorkerCreator:
     def _to_worker_dict_list(self):
         return [w.to_worker_dict() for w in self._workers]
 
-    def to_json(self, sort_keys=True, indent=2) -> str:
+    def to_json(self, sort_keys=False, indent=2) -> str:
         return json.dumps(self._to_worker_dict_list(), sort_keys=sort_keys, indent=indent)
 
     @staticmethod

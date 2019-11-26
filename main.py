@@ -8,11 +8,11 @@ workerFile = "workers.json"
 sectionFile = "sections.json"
 
 
-def generate_json() -> None:
+def generate_json(worker_count: int) -> None:
     """
     A wrapper function to wrap the json generation in one function call
     """
-    wc = WorkerCreator.WorkerCreator(3)
+    wc = WorkerCreator.WorkerCreator(worker_count)
     result_file = open(workerFile, "w")
     result_file.write(wc.to_json())
     result_file.close()
@@ -27,13 +27,11 @@ print("Step one: creating environment:")
 generateBase = input("Do you want me to generate data for you? (y/n)")
 if generateBase == "y" or generateBase == "Y":
     # means to generate the json files from stock
-    generate_json()
+    generate_json(7)
 elif generateBase == "n" or generateBase == "N":
     # pass here to cover all other inputs with the else branch
     pass
 else:
     raise AttributeError("Could not map %s to a 'y' or 'n'".format(generateBase))
-
-# TODO: continue here
 
 print("Done!")
