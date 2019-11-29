@@ -3,6 +3,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Color, PatternFill, Alignment
 from typing import Dict, List
 import json
+import re
 from creation.SectionCreator import SectionCreator
 
 class InitializationException(Exception):
@@ -17,6 +18,10 @@ class Creator:
     The class which creates the files which the learning algorithm can use for
     training
     """
+
+    # constants
+    WORKER_SHEET = "Workers"
+    SECTION_SHEET = "Sections"
 
     class _DataStruct:
         """
@@ -83,15 +88,16 @@ class Creator:
         wb = Workbook()
         # a blank sheet is created by default: use this instead of creating a new one
         current = wb.active
-        current.title = "Workers"
+        current.title = self.WORKER_SHEET
         # foreach property of worker
-        self._create_single_table(current, self.__workerList, 4, 2, "Worker")
+        self._create_single_table(current, self.__workerList, 4, 2, self.WORKER_SHEET)
         # create the sheet with the sections
-        current = wb.create_sheet("Sections")
-        self._create_single_table(current, self.__sectionList, 4, 2, "Sections")
+        current = wb.create_sheet(self.SECTION_SHEET)
+        self._create_single_table(current, self.__sectionList, 4, 2, self.SECTION_SHEET)
         wb.save(file_name)
         # create the sheet where to every section a worker is assigned
-        wb.create_sheet("Assignments")
+        current = wb.create_sheet("Affiliations")
+        self._create_cross_table(current, 4, 2, "Affiliations")
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
@@ -105,7 +111,23 @@ class Creator:
         return len(self.__sectionList) != 0 and len(self.__workerList) != 0
 
     def _create_single_table(self, workbook, data: List[_DataStruct], start_row: int, start_column: int, name: str,
-                             offset_row: int = 2, offset_col: int = 0):
+                             offset_row: int = 2, offset_col: int = 0) -> None:
+        """
+        Creates a row table dedicated to the data given
+        :param workbook: the to write the data in
+        :param data: the actual data to write (should either be worker or section descriptions)
+        :param start_row: the row the table heading should be placed in
+        :param start_column: the column the table heading should start
+        :param name: the name of the table to use as heading
+        :param offset_row: set this value for vertical displacement between the heading and the table header
+        :param offset_col: set this value for horizontal displacement between the heading the the table header
+        """
+        def replace_spaces(to_transform: str) -> str:
+            """
+            Replaces all whitespaces with underscores in the string given
+            """
+            return re.sub(r"\s", "_", to_transform)
+
         workbook.cell(row=start_row, column=start_column).value = name
         # use the first data point as template
         header_keys = data[0].attributes.keys()
@@ -116,11 +138,14 @@ class Creator:
         table_row = start_row + offset_row
         current_col = start_column + offset_col
         for key in header_keys:
-            # skip the team key: it is a dedicated file
-            if key == SectionCreator.TEAM_KEY:
-                continue
             current_cell = workbook.cell(row=table_row, column=current_col)
-            current_cell.value = str(key)
+            # skip the exception
+            if key == SectionCreator.TEAM_KEY:
+                # override the value
+                key_content = "section file"
+            else:
+                key_content = key
+            current_cell.value = key_content
             # do some styling
             current_cell.fill = header_fill
             current_cell.alignment = header_alignment
@@ -133,18 +158,21 @@ class Creator:
             width = key_width if key_width > content_width else content_width
             workbook.column_dimensions[col_letter].width = 1.8 * width
             current_col += 1
+        # update the row "pointer" below the header
+        table_row += 1
         for y in range(len(data)):
             current_col = start_column + offset_col
             for key in header_keys:
-                if key == SectionCreator.TEAM_KEY:
-                    continue
-                cell = workbook.cell(row=table_row + 1 + y, column=current_col)
+                cell = workbook.cell(row=table_row + y, column=current_col)
                 val = data[y].attributes[key]
-                # TODO: check if val is a list -> then do dedicated formatting: the default one is odd
+                if key == SectionCreator.TEAM_KEY:
+                    # override
+                    val = replace_spaces(data[y].attributes["Name"]) + ".xlsx"
                 cell.value = self.__val_to_string(val)
                 current_col += 1
 
-    def _create_cross_table(self, workbook, start_row: int, start_column: int):
+    def _create_cross_table(self, workbook, start_row: int, start_column: int, table_tile: str, offset_row: int = 2,
+                            offset_col: int = 0):
         pass
 
     @staticmethod
