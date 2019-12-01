@@ -8,3 +8,6 @@ venv/
 # intermediate data files
 *.json
 *.xlsx
+
+# LibreOffice stuff
+.~lock.data.xlsx#
