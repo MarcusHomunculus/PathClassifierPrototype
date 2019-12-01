@@ -83,7 +83,7 @@ class SectionCreator:
         def to_dict(self):
             return {
                 "Name": self.name,
-                "Abilities": self.abilities,
+                "Skills": self.abilities,
                 "PaymentStage": self.payment_level,
                 "NormalizedWorkerCount": self.worker_fraction,
                 SectionCreator.TEAM_KEY: self.teams
