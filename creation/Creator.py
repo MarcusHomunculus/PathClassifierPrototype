@@ -1,10 +1,11 @@
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Color, PatternFill, Alignment
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import json
 import re
 from creation.SectionCreator import SectionCreator
+
 
 class InitializationException(Exception):
     """
@@ -42,13 +43,7 @@ class Creator:
 
     __sectionList: List[_DataStruct] = []
     __workerList: List[_DataStruct] = []
-
-    #
-    # def __init__(self):
-    #	"""
-    #	The constructor
-    #	"""
-    #	pass
+    __assignments: List[Tuple[_DataStruct, _DataStruct]]
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -94,10 +89,10 @@ class Creator:
         # create the sheet with the sections
         current = wb.create_sheet(self.SECTION_SHEET)
         self._create_single_table(current, self.__sectionList, 4, 2, self.SECTION_SHEET)
-        wb.save(file_name)
-        # create the sheet where to every section a worker is assigned
+        # create the sheet where to every skill of a section is corresponded with a workers skill
         current = wb.create_sheet("Affiliations")
-        self._create_cross_table(current, 4, 2, "Affiliations")
+        self._create_cross_table(current, 2, 2, "Affiliations")
+        wb.save(file_name)
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
@@ -173,6 +168,44 @@ class Creator:
 
     def _create_cross_table(self, workbook, start_row: int, start_column: int, table_tile: str, offset_row: int = 2,
                             offset_col: int = 0):
+        # worker_data: List[_DataStruct], section_data: List[_DataStruct] come as class members
+        # start with creating the header
+        workbook.cell(row=start_row, column=start_column).value = table_tile
+        current_row = start_row + offset_row + 1    # start one row below and merge all section cells afterwards
+        # set row height for the section skills based on the first entry using it as blueprint for length estimation
+        workbook.row_dimensions[current_row].height = len(self.__sectionList[0].skills[0]) * 5 * 1.7
+        # and for the names
+        workbook.row_dimensions[current_row-1].height = len(self.__sectionList[0].attributes["Name"]) * 10
+        # +2 for the col as downwards the columns for the worker and the abilities are required
+        current_column = start_column + offset_col + 2
+        # set the styling
+        section_fill = PatternFill(start_color='FFFF9933', end_color='FFFF9933', fill_type='solid')
+        for section in self.__sectionList:
+            col_section_start = current_column
+            for skill in section.skills:
+                # adapt the column width where required
+                workbook.column_dimensions[get_column_letter(current_column)].width = 3
+                active = workbook.cell(row=current_row, column=current_column)
+                active.value = skill
+                active.alignment = Alignment(text_rotation=90)
+                active.fill = section_fill
+                current_column += 1
+            # now merge the upper cells and insert the section name
+            workbook.merge_cells(start_row=current_row-1, start_column=col_section_start, end_row=current_row-1,
+                                 end_column=current_column-1)
+            section_cell = workbook.cell(row=current_row-1, column=col_section_start)
+            section_cell.value = section.attributes["Name"]
+            section_cell.alignment = Alignment(text_rotation=90, horizontal='center')
+            section_cell.fill = section_fill
+
+    def __assign(self, workers: List[_DataStruct], sections: List[_DataStruct]):
+        ## assign the workers to their section on a random basis -> use a new list and shuffle it
+        #shuffled_workers = list(workers)
+        #assigned = ()
+        #for w in range(len(shuffled_workers)):
+        #    # start with assigning workers which fully match the job description
+        #
+        #    self.__assignments.append()     # add the pairing here
         pass
 
     @staticmethod
