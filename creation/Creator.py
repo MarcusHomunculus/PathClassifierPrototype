@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 import json
 import re
 import random
+import math
 from creation.SectionCreator import SectionCreator
 
 
@@ -238,32 +239,74 @@ class Creator:
                     match_counter += 1
             return match_counter + allowed_missing >= len(required_skills)
 
-        # assign the workers to their section on a random basis -> use a new list and shuffle it
+        # noinspection PyProtectedMember
+        def assign_to_sections(sections: Dict[Creator._Datastruct, int], worker_list: List[Creator._DataStruct],
+                               allowed_missing: int) -> None:
+            # TODO: your docu could stand right here
+            for sec in sections.keys():
+                assigned_workers = []
+                for worker in worker_list:
+                    if sections[sec] == 0:
+                        # the boat is full
+                        break
+                    if not qualifications_match(worker.skills, sec.skills, allowed_missing):
+                        continue
+                    # mark the worker as to be removed from the pool
+                    assigned_workers.append(worker)
+                    sections[sec] -= 1      # remove one vacant spot
+                    self.__assignments.append((sec, worker))
+                # remove all workers assigned
+                for assigned in assigned_workers:
+                    worker_list.remove(assigned)
+
+        # noinspection PyProtectedMember
+        def count_open_positions(section_map: Dict[Creator._DataStruct, int]) -> int:
+            # TODO: write some nice docu here
+            open_spots = 0
+            for section_size in section_map.values():
+                open_spots += section_size
+
+        # shuffle the workers
         shuffled_workers = list(self.__workerList)
         random.shuffle(shuffled_workers)
-        shuffled_sections = list(self.__sectionList)
-        random.shuffle(shuffled_sections)
-        leftovers = {}
-        for section in shuffled_sections:
-            # calculate how many places have to positioned
-            worker_cnt = int(len(shuffled_workers) * float(section.attributes["NormalizedWorkerCount"]) / 10)
-            assigned_workers = []
-            for worker in shuffled_workers:
-                if worker_cnt == 0:
-                    # the "boat" is full
-                    break
-                if not qualifications_match(worker.skills, section.skills):
-                    continue
-                self.__assignments.append((section, worker))
-                # mark the worker as to be removed from the pool
-                assigned_workers.append(worker)
-                worker_cnt -= 1
-            if worker_cnt > 0:
-                leftovers[section, worker_cnt]
-            # remove all workers assigned
-            for assigned in assigned_workers:
-                shuffled_workers.remove(assigned)
-        # TODO: assign leftover workers to vacant positions
+        section_dict = {}
+        for section in self.__sectionList:
+            section_dict[section] = int(math.ceil(len(shuffled_workers) * float(
+                section.attributes["NormalizedWorkerCount"]) / 10))
+        # check if there's enough spots for every worker else crash to inform the user
+        vacant = count_open_positions(section_dict)
+        if vacant < len(shuffled_workers):
+            raise AttributeError("Have {} vacant spaces but {} workers".format(vacant, len(shuffled_workers)))
+        skill_mismatch_count = 0
+        while count_open_positions(section_dict) < 0:
+            assign_to_sections(section_dict, shuffled_workers, skill_mismatch_count)
+            skill_mismatch_count += 1
+        # # assign the workers to their section on a random basis -> use a new list and shuffle it
+        # shuffled_workers = list(self.__workerList)
+        # random.shuffle(shuffled_workers)
+        # shuffled_sections = list(self.__sectionList)
+        # random.shuffle(shuffled_sections)
+        # leftovers = {}
+        # for section in shuffled_sections:
+        #     # calculate how many places have to positioned
+        #     worker_cnt = int(math.ceil(len(shuffled_workers) * float(section.attributes["NormalizedWorkerCount"]) / 10))
+        #     assigned_workers = []
+        #     for worker in shuffled_workers:
+        #         if worker_cnt == 0:
+        #             # the "boat" is full
+        #             break
+        #         if not qualifications_match(worker.skills, section.skills):
+        #             continue
+        #         self.__assignments.append((section, worker))
+        #         # mark the worker as to be removed from the pool
+        #         assigned_workers.append(worker)
+        #         worker_cnt -= 1
+        #     if worker_cnt > 0:
+        #         leftovers[section, worker_cnt]
+        #     # remove all workers assigned
+        #     for assigned in assigned_workers:
+        #         shuffled_workers.remove(assigned)
+        # # TODO: assign leftover workers to vacant positions
 
     @staticmethod
     def __val_to_string(val) -> str:
