@@ -1,9 +1,11 @@
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Color, PatternFill, Alignment
+from openpyxl.styles import PatternFill, Alignment
+from openpyxl.styles.borders import Border, Side
 from typing import Dict, List, Tuple
 import json
 import re
+import random
 from creation.SectionCreator import SectionCreator
 
 
@@ -179,6 +181,8 @@ class Creator:
         # +2 for the col as downwards the columns for the worker and the abilities are required
         current_column = start_column + offset_col + 2
         # set the styling
+        header_border = Border(left=Side(style='medium'), right=Side(style='medium'), top=Side(style='medium'),
+                               bottom=Side(style='medium'))
         section_fill = PatternFill(start_color='FFFF9933', end_color='FFFF9933', fill_type='solid')
         for section in self.__sectionList:
             col_section_start = current_column
@@ -189,24 +193,77 @@ class Creator:
                 active.value = skill
                 active.alignment = Alignment(text_rotation=90)
                 active.fill = section_fill
+                active.border = header_border
                 current_column += 1
             # now merge the upper cells and insert the section name
-            workbook.merge_cells(start_row=current_row-1, start_column=col_section_start, end_row=current_row-1,
-                                 end_column=current_column-1)
+            if len(section.skills) > 1:
+                workbook.merge_cells(start_row=current_row-1, start_column=col_section_start, end_row=current_row-1,
+                                     end_column=current_column-1)
             section_cell = workbook.cell(row=current_row-1, column=col_section_start)
             section_cell.value = section.attributes["Name"]
             section_cell.alignment = Alignment(text_rotation=90, horizontal='center')
             section_cell.fill = section_fill
+            section_cell.border = header_border
+        # continue with the workers: fill with the skills and merge later with the name one column before
+        current_row += 1
+        skill_col = start_column + offset_col + 1
+        workbook.column_dimensions[get_column_letter(skill_col - 1)].width = 20
+        workbook.column_dimensions[get_column_letter(skill_col)].width = 20
+        worker_fill = PatternFill(start_color='FF66FF33', end_color='FF66FF33', fill_type='solid')
+        for worker in self.__workerList:
+            row_worker_start = current_row
+            for skill in worker.skills:
+                active = workbook.cell(row=current_row, column=skill_col)
+                active.value = skill
+                active.fill = worker_fill
+                active.border = header_border
+                current_row += 1
+            workbook.merge_cells(start_row=row_worker_start, start_column=skill_col-1, end_row=current_row-1,
+                                 end_column=skill_col-1)
+            worker_cell = workbook.cell(row=row_worker_start, column=skill_col-1)
+            worker_cell.value = worker.attributes["Name"]
+            worker_cell.alignment = Alignment(vertical='center')
+            worker_cell.fill = worker_fill
+            worker_cell.border = header_border
+        cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
+        cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
 
-    def __assign(self, workers: List[_DataStruct], sections: List[_DataStruct]):
-        ## assign the workers to their section on a random basis -> use a new list and shuffle it
-        #shuffled_workers = list(workers)
-        #assigned = ()
-        #for w in range(len(shuffled_workers)):
-        #    # start with assigning workers which fully match the job description
-        #
-        #    self.__assignments.append()     # add the pairing here
-        pass
+    def __assign(self):
+        # TODO: doc me
+        def qualifications_match(worker_skills: List[str], required_skills: List[str], allowed_missing: int = 0) -> bool:
+            # TODO: doc me
+            match_counter = 0
+            for skill in required_skills:
+                if skill in worker_skills:
+                    match_counter += 1
+            return match_counter + allowed_missing >= len(required_skills)
+
+        # assign the workers to their section on a random basis -> use a new list and shuffle it
+        shuffled_workers = list(self.__workerList)
+        random.shuffle(shuffled_workers)
+        shuffled_sections = list(self.__sectionList)
+        random.shuffle(shuffled_sections)
+        leftovers = {}
+        for section in shuffled_sections:
+            # calculate how many places have to positioned
+            worker_cnt = int(len(shuffled_workers) * float(section.attributes["NormalizedWorkerCount"]) / 10)
+            assigned_workers = []
+            for worker in shuffled_workers:
+                if worker_cnt == 0:
+                    # the "boat" is full
+                    break
+                if not qualifications_match(worker.skills, section.skills):
+                    continue
+                self.__assignments.append((section, worker))
+                # mark the worker as to be removed from the pool
+                assigned_workers.append(worker)
+                worker_cnt -= 1
+            if worker_cnt > 0:
+                leftovers[section, worker_cnt]
+            # remove all workers assigned
+            for assigned in assigned_workers:
+                shuffled_workers.remove(assigned)
+        # TODO: assign leftover workers to vacant positions
 
     @staticmethod
     def __val_to_string(val) -> str:
