@@ -106,6 +106,9 @@ class Creator:
         current = wb.create_sheet("Affiliations")
         self._create_cross_table_simple(current, 2, 2, "Affiliations")
         wb.save(file_name)
+        wb.close()
+        # continue with the referenced files
+        self._create_team_xlsx_file("../{file}.xlsx")
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
@@ -308,6 +311,25 @@ class Creator:
             active = workbook.cell(row=current_row, column=current_column)
             active.value = "X"
 
+    def _create_team_xlsx_file(self, path: str, start_row: int, start_column: int, offset_row: int = 2,
+                               offset_col: int = 0):
+        # TODO: doc me
+        for section in self.__sectionList:
+            wb = Workbook()
+            current = wb.active
+            section_name = section.attributes["Name"]
+            current.title = section_name
+            current.cell(row=start_row, column=start_column).value = "Team formation in {}".format(section_name)
+            current_column = start_row + offset_row
+            current_row = start_column + offset_col
+            for team in section.attributes["Teams"]:
+                active = current.cell(row=current_row, column=current_column)
+                active.value = team[0]
+                current_row += 1
+            wb.save(path.format(name=section_name))
+            wb.close()
+
+
     def __assign(self) -> None:
         """
         Assigns every worker in the stored worker list to a section in a stored section list
@@ -378,7 +400,6 @@ class Creator:
             raise AttributeError("Have {} vacant spaces but {} workers".format(vacant, len(shuffled_workers)))
         skill_mismatch_allowed = 0
         while len(shuffled_workers) > 0:    # stop when all workers are assigned -> some job might be staying open
-            open_positions = count_open_positions(section_dict)
             assign_to_sections(section_dict, shuffled_workers, skill_mismatch_allowed)
             skill_mismatch_allowed += 1
 
