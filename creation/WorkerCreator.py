@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple
 import datetime
 import random
 from datetime import timedelta
-from creation.NameProvider import NameProvider
+from NameProvider import NameProvider
 import json
 
 

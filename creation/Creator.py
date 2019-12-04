@@ -7,7 +7,8 @@ import json
 import re
 import random
 import math
-from creation.SectionCreator import SectionCreator
+import os
+from SectionCreator import SectionCreator
 
 
 class InitializationException(Exception):
@@ -108,11 +109,14 @@ class Creator:
         wb.save(file_name)
         wb.close()
         # continue with the referenced files
-        self._create_team_xlsx_file("../{file}.xlsx")
+        if not os.path.exists("../sections"):
+            os.mkdir("../sections")
+        self._create_team_xlsx_file("../sections/{name}.xlsx", 2, 2)
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
+        raise NotImplementedError("Function not implemented")
 
     def _has_internal_data(self) -> bool:
         """
@@ -312,7 +316,7 @@ class Creator:
             active.value = "X"
 
     def _create_team_xlsx_file(self, path: str, start_row: int, start_column: int, offset_row: int = 2,
-                               offset_col: int = 0):
+                               offset_col: int = 1):
         # TODO: doc me
         for section in self.__sectionList:
             wb = Workbook()
@@ -320,13 +324,14 @@ class Creator:
             section_name = section.attributes["Name"]
             current.title = section_name
             current.cell(row=start_row, column=start_column).value = "Team formation in {}".format(section_name)
-            current_column = start_row + offset_row
-            current_row = start_column + offset_col
+            current_row = start_row + offset_row
+            current_column = start_column + offset_col
             for team in section.attributes["Teams"]:
                 active = current.cell(row=current_row, column=current_column)
-                active.value = team[0]
+                active.value = team
                 current_row += 1
-            wb.save(path.format(name=section_name))
+            file_name = re.sub(r"\s", "_", section_name)
+            wb.save(path.format(name=file_name))
             wb.close()
 
 
