@@ -94,22 +94,22 @@ class WorkerCreator:
 
     @staticmethod
     def draw_job() -> str:
-        rand_for_job = random.gauss(0, 0.4)
-        # bosses and engineers are quite rare so pick them from the "corners" of the bell curve
-        if rand_for_job < -0.7:
+        rand_for_job = random.gauss(0, 1.0)
+        # bosses and engineers are quite rare so pick them from the "corners" of a narrow curve
+        if rand_for_job < -1.5:
             return WorkerCreator.job_engineer
-        if rand_for_job > 0.4:
+        if rand_for_job > 1.5:
             return WorkerCreator.job_boss
-        # just pick randomly -> no preference
-        worker_prob = random.uniform(0.0, 1.0)
-        if worker_prob < 0.25:
+        # just pick randomly -> preference production members as this should require the most man power
+        worker_prob = random.gauss(0, 5.0)
+        if worker_prob < -2.0:
             return WorkerCreator.job_office
-        if worker_prob < 0.5:
-            return WorkerCreator.job_warehouseman
-        if worker_prob < 0.75:
+        if worker_prob < 0:
+            return WorkerCreator.job_electrician
+        if worker_prob < 2.0:
             return WorkerCreator.job_mechanic
         else:
-            return WorkerCreator.job_electrician
+            return WorkerCreator.job_warehouseman
 
     @staticmethod
     def draw_birthday(age: int) -> datetime:
