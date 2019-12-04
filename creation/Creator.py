@@ -27,7 +27,7 @@ class Creator:
     WORKER_SHEET = "Workers"
     SECTION_SHEET = "Sections"
 
-    class _DataStruct:
+    class DataStruct:
         """
         Works as a container / struct to organize the data for a worker
         """
@@ -44,9 +44,9 @@ class Creator:
                 s += "{} : {}\n".format(attr, self.attributes[attr])
             return s + "List content: {}".format(str(self.skills))
 
-    __sectionList: List[_DataStruct] = []
-    __workerList: List[_DataStruct] = []
-    __assignments: List[Tuple[_DataStruct, _DataStruct]]
+    __sectionList: List[DataStruct] = []
+    __workerList: List[DataStruct] = []
+    __assignments: List[Tuple[DataStruct, DataStruct]]
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -62,7 +62,7 @@ class Creator:
             with open(path) as json_file:
                 entities = json.load(json_file)
                 for e in entities:
-                    current = Creator._DataStruct()
+                    current = Creator.DataStruct()
                     for attr in e:
                         if attr == "Skills":
                             current.skills = e[attr]
@@ -78,6 +78,9 @@ class Creator:
             else:
                 raise AttributeError(
                     "No implementation to push {} to the internal members".format(t))
+        # continue with matching sections with workers
+        # TODO: re-enable again
+        #self.__assign()
 
     def create_xlsx(self, file_name: str = "../data.xlsx") -> None:
         if not self._has_internal_data():
@@ -108,7 +111,7 @@ class Creator:
         """
         return len(self.__sectionList) != 0 and len(self.__workerList) != 0
 
-    def _create_single_table(self, workbook, data: List[_DataStruct], start_row: int, start_column: int, name: str,
+    def _create_single_table(self, workbook, data: List[DataStruct], start_row: int, start_column: int, name: str,
                              offset_row: int = 2, offset_col: int = 0) -> None:
         """
         Creates a row table dedicated to the data given
@@ -229,20 +232,35 @@ class Creator:
         cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
         cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
 
-    def __assign(self):
-        # TODO: doc me
+    def __assign(self) -> None:
+        """
+        Assigns every worker in the stored worker list to a section in a stored section list
+        """
         def qualifications_match(worker_skills: List[str], required_skills: List[str], allowed_missing: int = 0) -> bool:
-            # TODO: doc me
+            """
+            Checks if the worker brings the skills that the section requires
+
+            :param worker_skills: the qualifications / skills the worker has
+            :param required_skills: the skills required by the section
+            :param allowed_missing: a desperation factor of the section: the number of skills that can be missing
+            :return: if the worker matches the sections requirements under the given condition (allowed_missing)
+            """
             match_counter = 0
             for skill in required_skills:
                 if skill in worker_skills:
                     match_counter += 1
             return match_counter + allowed_missing >= len(required_skills)
 
-        # noinspection PyProtectedMember
-        def assign_to_sections(sections: Dict[Creator._Datastruct, int], worker_list: List[Creator._DataStruct],
+        def assign_to_sections(sections: Dict[Creator.DataStruct, int], worker_list: List[Creator.DataStruct],
                                allowed_missing: int) -> None:
-            # TODO: your docu could stand right here
+            """
+            Goes through the list of sections and assigns workers to them as long as they have a open position
+
+            :param sections: the sections bundled with the count of open positions
+            :param worker_list: the list of workers which look for a job
+            :param allowed_missing: the desperation factor of the sections: says how many skills can be missing by the
+                   worker to match the section
+            """
             for sec in sections.keys():
                 assigned_workers = []
                 for worker in worker_list:
@@ -259,14 +277,19 @@ class Creator:
                 for assigned in assigned_workers:
                     worker_list.remove(assigned)
 
-        # noinspection PyProtectedMember
-        def count_open_positions(section_map: Dict[Creator._DataStruct, int]) -> int:
-            # TODO: write some nice docu here
+        def count_open_positions(section_map: Dict[Creator.DataStruct, int]) -> int:
+            """
+            Goes through the count of open positions and sums them up
+
+            :param section_map: the sections and their count of vacant positions
+            :return: sum of all vacant positions across all sections
+            """
             open_spots = 0
             for section_size in section_map.values():
                 open_spots += section_size
+            return open_spots
 
-        # shuffle the workers
+        # shuffle the workers to be simulate a more realistic result
         shuffled_workers = list(self.__workerList)
         random.shuffle(shuffled_workers)
         section_dict = {}
@@ -277,36 +300,10 @@ class Creator:
         vacant = count_open_positions(section_dict)
         if vacant < len(shuffled_workers):
             raise AttributeError("Have {} vacant spaces but {} workers".format(vacant, len(shuffled_workers)))
-        skill_mismatch_count = 0
-        while count_open_positions(section_dict) < 0:
-            assign_to_sections(section_dict, shuffled_workers, skill_mismatch_count)
-            skill_mismatch_count += 1
-        # # assign the workers to their section on a random basis -> use a new list and shuffle it
-        # shuffled_workers = list(self.__workerList)
-        # random.shuffle(shuffled_workers)
-        # shuffled_sections = list(self.__sectionList)
-        # random.shuffle(shuffled_sections)
-        # leftovers = {}
-        # for section in shuffled_sections:
-        #     # calculate how many places have to positioned
-        #     worker_cnt = int(math.ceil(len(shuffled_workers) * float(section.attributes["NormalizedWorkerCount"]) / 10))
-        #     assigned_workers = []
-        #     for worker in shuffled_workers:
-        #         if worker_cnt == 0:
-        #             # the "boat" is full
-        #             break
-        #         if not qualifications_match(worker.skills, section.skills):
-        #             continue
-        #         self.__assignments.append((section, worker))
-        #         # mark the worker as to be removed from the pool
-        #         assigned_workers.append(worker)
-        #         worker_cnt -= 1
-        #     if worker_cnt > 0:
-        #         leftovers[section, worker_cnt]
-        #     # remove all workers assigned
-        #     for assigned in assigned_workers:
-        #         shuffled_workers.remove(assigned)
-        # # TODO: assign leftover workers to vacant positions
+        skill_mismatch_allowed = 0
+        while count_open_positions(section_dict) > 0:
+            assign_to_sections(section_dict, shuffled_workers, skill_mismatch_allowed)
+            skill_mismatch_allowed += 1
 
     @staticmethod
     def __val_to_string(val) -> str:
