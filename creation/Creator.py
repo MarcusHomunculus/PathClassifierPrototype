@@ -137,12 +137,6 @@ class Creator:
         :param offset_row: set this value for vertical displacement between the heading and the table header
         :param offset_col: set this value for horizontal displacement between the heading the the table header
         """
-        def replace_spaces(to_transform: str) -> str:
-            """
-            Replaces all whitespaces with underscores in the string given
-            """
-            return re.sub(r"\s", "_", to_transform)
-
         workbook.cell(row=start_row, column=start_column).value = name
         # use the first data point as template
         header_keys = data[0].attributes.keys()
@@ -182,7 +176,7 @@ class Creator:
                 val = data[y].attributes[key]
                 if key == SectionCreator.TEAM_KEY:
                     # override
-                    val = replace_spaces(data[y].attributes["Name"]) + ".xlsx"
+                    val = Creator._replace_spaces(data[y].attributes["Name"]) + ".xlsx"
                 cell.value = self.__val_to_string(val)
                 current_col += 1
 
@@ -330,9 +324,16 @@ class Creator:
                 active = current.cell(row=current_row, column=current_column)
                 active.value = team
                 current_row += 1
-            file_name = re.sub(r"\s", "_", section_name)
+            file_name = Creator._replace_spaces(section_name)
             wb.save(path.format(name=file_name))
             wb.close()
+
+    @staticmethod
+    def _replace_spaces(to_transform: str) -> str:
+        """
+        Replaces all whitespaces with underscores in the string given
+        """
+        return re.sub(r"\s", "_", to_transform)
 
 
     def __assign(self) -> None:
