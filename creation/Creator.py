@@ -46,7 +46,7 @@ class Creator:
 
     __sectionList: List[DataStruct] = []
     __workerList: List[DataStruct] = []
-    __assignments: List[Tuple[DataStruct, DataStruct]]
+    __assignments: List[Tuple[DataStruct, DataStruct]] = []
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -79,8 +79,7 @@ class Creator:
                 raise AttributeError(
                     "No implementation to push {} to the internal members".format(t))
         # continue with matching sections with workers
-        # TODO: re-enable again
-        #self.__assign()
+        self.__assign()
 
     def create_xlsx(self, file_name: str = "../data.xlsx") -> None:
         if not self._has_internal_data():
@@ -97,7 +96,7 @@ class Creator:
         self._create_single_table(current, self.__sectionList, 4, 2, self.SECTION_SHEET)
         # create the sheet where to every skill of a section is corresponded with a workers skill
         current = wb.create_sheet("Affiliations")
-        self._create_cross_table(current, 2, 2, "Affiliations")
+        self._create_cross_table_simple(current, 2, 2, "Affiliations")
         wb.save(file_name)
 
     def create_xml(self, name: str) -> None:
@@ -174,7 +173,6 @@ class Creator:
 
     def _create_cross_table(self, workbook, start_row: int, start_column: int, table_tile: str, offset_row: int = 2,
                             offset_col: int = 0):
-        # worker_data: List[_DataStruct], section_data: List[_DataStruct] come as class members
         # start with creating the header
         workbook.cell(row=start_row, column=start_column).value = table_tile
         current_row = start_row + offset_row + 1    # start one row below and merge all section cells afterwards
@@ -231,6 +229,56 @@ class Creator:
             worker_cell.border = header_border
         cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
         cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
+
+    def _create_cross_table_simple(self, workbook, start_row: int, start_column: int, table_tile: str,
+                                   offset_row: int = 2, offset_col: int = 0):
+        # start with creating the header
+        workbook.cell(row=start_row, column=start_column).value = table_tile
+        # set the styling
+        header_border = Border(left=Side(style='medium'), right=Side(style='medium'), top=Side(style='medium'),
+                               bottom=Side(style='medium'))
+        section_fill = PatternFill(start_color='FFFF9933', end_color='FFFF9933', fill_type='solid')
+        current_row = start_row + offset_row
+        # set row height for the section names based on the first entry using it as blueprint for length estimation
+        workbook.row_dimensions[current_row].height = len(self.__sectionList[0].attributes["Name"]) * 12
+        # +1 for the col as downwards the columns for the worker and the abilities are required
+        current_column = start_column + offset_col + 1
+        for section in self.__sectionList:
+            workbook.column_dimensions[get_column_letter(current_column)].width = 3
+            active = workbook.cell(row=current_row, column=current_column)
+            active.value = section.attributes["Name"]
+            active.alignment = Alignment(text_rotation=90)
+            active.fill = section_fill
+            active.border = header_border
+            current_column += 1
+        # continue with the workers
+        current_row += 1
+        current_column = start_column + offset_col
+        workbook.column_dimensions[get_column_letter(current_column)].width = 20
+        worker_fill = PatternFill(start_color='FF66FF33', end_color='FF66FF33', fill_type='solid')
+        for worker in self.__workerList:
+            active = workbook.cell(row=current_row, column=current_column)
+            active.value = worker.attributes["Name"]
+            active.fill = worker_fill
+            active.border = header_border
+            current_row += 1
+        # now insert the matching data
+        cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
+        cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
+        field_row = start_row + offset_row + 1
+        field_column = start_column + offset_col + 1
+        # fill the whole space with color and borders
+        for x in range(len(self.__sectionList)):
+            for y in range(len(self.__workerList)):
+                active = workbook.cell(row=field_row + y, column=field_column + x)
+                active.border = cross_space_border
+                active.fill = cross_space_fill
+                active.alignment = Alignment(horizontal='center')
+        for pair in self.__assignments:
+            current_column = self.__sectionList.index(pair[0]) + field_column
+            current_row = self.__workerList.index(pair[1]) + field_row
+            active = workbook.cell(row=current_row, column=current_column)
+            active.value = "X"
 
     def __assign(self) -> None:
         """
@@ -301,7 +349,8 @@ class Creator:
         if vacant < len(shuffled_workers):
             raise AttributeError("Have {} vacant spaces but {} workers".format(vacant, len(shuffled_workers)))
         skill_mismatch_allowed = 0
-        while count_open_positions(section_dict) > 0:
+        while len(shuffled_workers) > 0:    # stop when all workers are assigned -> some job might be staying open
+            open_positions = count_open_positions(section_dict)
             assign_to_sections(section_dict, shuffled_workers, skill_mismatch_allowed)
             skill_mismatch_allowed += 1
 
