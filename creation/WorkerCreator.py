@@ -9,7 +9,7 @@ import json
 class WorkerCreator:
 
     # "constants"
-    job_boss = "boss"
+    job_controller = "controller"
     job_engineer = "engineer"
     job_warehouseman = "warehouseman"
     job_office = "paper pusher"     # :p -- aka office worker
@@ -50,7 +50,7 @@ class WorkerCreator:
 
     # fields
     __skill_pool: Dict[str, Tuple[List[str], List[str]]] = {
-        job_boss: ([ability_economic, ability_driving], [ability_engineering]),
+        job_controller: ([ability_economic, ability_driving], [ability_engineering]),
         job_engineer: ([ability_engineering, ability_driving], [ability_economic]),
         job_warehouseman: ([ability_driving, ability_forklift], [ability_office]),
         job_office: ([ability_office, ability_driving], [ability_economic]),
@@ -98,15 +98,15 @@ class WorkerCreator:
         # bosses and engineers are quite rare so pick them from the "corners" of a narrow curve
         if rand_for_job < -1.5:
             return WorkerCreator.job_engineer
-        if rand_for_job > 1.5:
-            return WorkerCreator.job_boss
+        if rand_for_job > 1.0:
+            return WorkerCreator.job_controller
         # just pick randomly -> preference production members as this should require the most man power
         worker_prob = random.gauss(0, 5.0)
-        if worker_prob < -2.0:
+        if worker_prob < -3.0:
             return WorkerCreator.job_office
-        if worker_prob < 0:
+        if worker_prob < -0.5:
             return WorkerCreator.job_electrician
-        if worker_prob < 2.0:
+        if worker_prob < 4.0:
             return WorkerCreator.job_mechanic
         else:
             return WorkerCreator.job_warehouseman
