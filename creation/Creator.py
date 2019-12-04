@@ -57,8 +57,12 @@ class Creator:
         :param path_to_sections: the path to the file containing the section
                                  definitions in JSON formatting
         """
-
-        def read_in(path, target):
+        def read_in(path: str, target: List[Creator.DataStruct]) -> None:
+            """
+            Writes the data from the specified JSON-file into the list specified, too
+            :param path: the path to the JSON file
+            :param target: the list in which to dump the converted data
+            """
             with open(path) as json_file:
                 entities = json.load(json_file)
                 for e in entities:
@@ -82,6 +86,10 @@ class Creator:
         self.__assign()
 
     def create_xlsx(self, file_name: str = "../data.xlsx") -> None:
+        """
+        Generates the files which represent the data in a xlsx structure
+        :param file_name: the name of the main data file
+        """
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
         # create the sheet with the worker data
@@ -173,6 +181,16 @@ class Creator:
 
     def _create_cross_table(self, workbook, start_row: int, start_column: int, table_tile: str, offset_row: int = 2,
                             offset_col: int = 0):
+        """
+        Creates a matrix which shows which worker fits to which section based on the skills
+
+        :param workbook: the sheet to write the table in
+        :param start_row: the row the heading should be placed in
+        :param start_column: the column the heading should be placed in
+        :param table_tile: the title to use for the heading
+        :param offset_row: the displacement between the heading and the table itself in row count
+        :param offset_col: the displacement between the heading the the table itself in columns
+        """
         # start with creating the header
         workbook.cell(row=start_row, column=start_column).value = table_tile
         current_row = start_row + offset_row + 1    # start one row below and merge all section cells afterwards
@@ -227,11 +245,21 @@ class Creator:
             worker_cell.alignment = Alignment(vertical='center')
             worker_cell.fill = worker_fill
             worker_cell.border = header_border
-        cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
-        cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
+        # cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
+        # cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
+        raise NotImplementedError("Function is not fully implemented")
 
     def _create_cross_table_simple(self, workbook, start_row: int, start_column: int, table_tile: str,
-                                   offset_row: int = 2, offset_col: int = 0):
+                                   offset_row: int = 2, offset_col: int = 0) -> None:
+        """
+        Creates the table which shows which employee is assigned to which department
+        :param workbook: the sheet to write the table in
+        :param start_row: the row the heading should be placed in
+        :param start_column: the column the heading should be placed in
+        :param table_tile: the title to use for the heading
+        :param offset_row: the displacement between the heading and the table itself in row count
+        :param offset_col: the displacement between the heading the the table itself in columns
+        """
         # start with creating the header
         workbook.cell(row=start_row, column=start_column).value = table_tile
         # set the styling
@@ -356,6 +384,12 @@ class Creator:
 
     @staticmethod
     def __val_to_string(val) -> str:
+        """
+        Converts the value to a string which usually defaults to the usage of pythons provided __str__() function except
+        for lists
+        :param val: the value to transform
+        :return: a string representation of the value
+        """
         if not isinstance(val, list):
             # just fallback to the python default
             return str(val)
