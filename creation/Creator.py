@@ -8,7 +8,7 @@ import re
 import random
 import math
 import os
-from .SectionCreator import SectionCreator
+from creation.SectionCreator import SectionCreator
 
 
 class InitializationException(Exception):
@@ -160,12 +160,7 @@ class Creator:
         current_col = start_column + offset_col
         for key in header_keys:
             current_cell = workbook.cell(row=table_row, column=current_col)
-            # skip the exception
-            if key == SectionCreator.TEAM_KEY:
-                # override the value
-                key_content = "section file"
-            else:
-                key_content = key
+            key_content = key if key != SectionCreator.TEAM_KEY else "section file"
             current_cell.value = key_content
             # do some styling
             current_cell.fill = header_fill
@@ -185,10 +180,8 @@ class Creator:
             current_col = start_column + offset_col
             for key in header_keys:
                 cell = workbook.cell(row=table_row + y, column=current_col)
-                val = data[y].attributes[key]
-                if key == SectionCreator.TEAM_KEY:
-                    # override
-                    val = Creator._replace_spaces(data[y].attributes["Name"]) + ".xlsx"
+                val = data[y].attributes[key] if key != SectionCreator.TEAM_KEY else Creator._replace_spaces(
+                    data[y].attributes["Name"]) + ".xlsx"
                 cell.value = self.__val_to_string(val)
                 current_col += 1
 
@@ -335,6 +328,8 @@ class Creator:
             for team in section.attributes["Teams"]:
                 active = current.cell(row=current_row, column=current_column)
                 active.value = team
+                active = current.cell(row=current_row, column=current_column + 1)
+                active.value = section.attributes["Teams"][team]
                 current_row += 1
             file_name = Creator._replace_spaces(section_name)
             wb.save(path.format(name=file_name))
