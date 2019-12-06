@@ -8,7 +8,7 @@ import re
 import random
 import math
 import os
-from SectionCreator import SectionCreator
+from .SectionCreator import SectionCreator
 
 
 class InitializationException(Exception):
