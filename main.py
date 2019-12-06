@@ -2,7 +2,7 @@
 The main routine
 """
 
-from creation import WorkerCreator, SectionCreator
+from creation import WorkerCreator, SectionCreator, Creator
 
 workerFile = "workers.json"
 sectionFile = "sections.json"
@@ -23,16 +23,32 @@ def generate_json(worker_count: int) -> None:
     result_file.close()
 
 
-print("Step one: creating environment:")
-shall_generate_base = input("Do you want me to generate data for you? (y/n)")
-if shall_generate_base == "y" or shall_generate_base == "Y":
-    # means to generate the json files from stock
-    generate_json(10)
+if __name__ == "__main__":
+    print("Step one: creating environment:")
+    # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
+    shall_generate_base = "y"
+    if shall_generate_base == "y" or shall_generate_base == "Y":
+        # means to generate the json files from stock
+        # worker_cnt = int(input("How many workers should be generated?"))
+        worker_cnt = 10
+        generate_json(worker_cnt)
+    elif shall_generate_base == "n" or shall_generate_base == "N":
+        # pass here to cover all other inputs with the else branch
+        pass
+    else:
+        raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
-elif shall_generate_base == "n" or shall_generate_base == "N":
-    # pass here to cover all other inputs with the else branch
-    pass
-else:
-    raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
+    print("Step two: Generating mock data from JSON")
+    # shall_generate_mock = input("Shall I use the existing data to generate mocking data? (y/n)")
+    shall_generate_mock = "y"
+    if shall_generate_mock == "y" or shall_generate_mock == "Y":
+        c = Creator.Creator(path_to_workers=workerFile, path_to_sections=sectionFile)
+        c.create_xlsx(".", "data.xlsx", "sections")
+        c.create_xml("ref.xml")
+    elif shall_generate_base == "n" or shall_generate_base == "N":
+        # pass here to cover all other inputs with the else branch
+        pass
+    else:
+        raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
-print("Done!")
+    print("Done!")
