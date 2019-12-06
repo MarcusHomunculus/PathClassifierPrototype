@@ -1,7 +1,7 @@
 from typing import List, Dict
 import json
 # to pull the string from there
-from .WorkerCreator import WorkerCreator
+from creation.WorkerCreator import WorkerCreator
 
 
 class SectionCreator:
