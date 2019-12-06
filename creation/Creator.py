@@ -315,8 +315,16 @@ class Creator:
             active.value = "X"
 
     def _create_team_xlsx_file(self, path: str, start_row: int, start_column: int,
-                               offset_row: int = 2, offset_col: int = 1):
-        # TODO: doc me
+                               offset_row: int = 2, offset_col: int = 1) -> None:
+        """
+        Creates the file which represents the allowed team distribution within the given department
+
+        :param path: the path under which the file is to be created
+        :param start_row: the row of the heading
+        :param start_column: the column to write the heading in
+        :param offset_row: the displacement of the "header" to the heading in y direction
+        :param offset_col: the displacement of the "header" to the heading in x direction
+        """
         for section in self.__sectionList:
             wb = Workbook()
             current = wb.active
