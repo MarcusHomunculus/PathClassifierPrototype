@@ -8,6 +8,7 @@ import re
 import random
 import math
 import os
+import xml.etree.ElementTree as ET
 from creation.SectionCreator import SectionCreator
 
 
@@ -48,6 +49,17 @@ class Creator:
     __sectionList: List[DataStruct] = []
     __workerList: List[DataStruct] = []
     __assignments: List[Tuple[DataStruct, DataStruct]] = []
+
+    def __init__(self, path_to_workers: str, path_to_sections: str):
+        """
+        The constructor which is a wrapper around read_from_json()
+
+        :param path_to_workers: the path to the file containing the worker
+                                definitions in JSON formatting
+        :param path_to_sections: the path to the file containing the section
+                                 definitions in JSON formatting
+        """
+        self.read_from_json(path_to_workers, path_to_sections)
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -128,7 +140,10 @@ class Creator:
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-        raise NotImplementedError("Function not implemented")
+        root = ET.Element("company")
+        structure = ET.SubElement(root, "structure")
+        tree = ET.ElementTree(root)
+        tree.write(name)
 
     def _has_internal_data(self) -> bool:
         """
@@ -478,6 +493,5 @@ class Creator:
 
 
 if __name__ == "__main__":
-    c = Creator()
-    c.read_from_json("../workers.json", "../sections.json")
+    c = Creator("../workers.json", "../sections.json")
     c.create_xlsx()
