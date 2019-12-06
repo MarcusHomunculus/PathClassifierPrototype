@@ -314,22 +314,48 @@ class Creator:
             active = workbook.cell(row=current_row, column=current_column)
             active.value = "X"
 
-    def _create_team_xlsx_file(self, path: str, start_row: int, start_column: int, offset_row: int = 2,
-                               offset_col: int = 1):
+    def _create_team_xlsx_file(self, path: str, start_row: int, start_column: int,
+                               offset_row: int = 2, offset_col: int = 1):
         # TODO: doc me
         for section in self.__sectionList:
             wb = Workbook()
             current = wb.active
+            team_attr = "Teams"
             section_name = section.attributes["Name"]
             current.title = section_name
-            current.cell(row=start_row, column=start_column).value = "Team formation in {}".format(section_name)
+            current.cell(row=start_row, column=start_column).value = "Maximal allowed team sizes in {}".format(
+                section_name)
             current_row = start_row + offset_row
             current_column = start_column + offset_col
-            for team in section.attributes["Teams"]:
+            # transform the data into a more suitable format
+            team_dict = {}
+            biggest_team = 0
+            for team in section.attributes[team_attr]:
+                head_count = math.ceil(float(section.attributes[team_attr][team]) *
+                                       self.__worker_count_from_normalized(section.attributes["NormalizedWorkerCount"]))
+                team_dict[team] = head_count
+                if head_count > biggest_team:
+                    biggest_team = head_count
+            header_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
+            border = Border(right=Side(style='thin'), bottom=Side(style='thin'), left=Side(style='thin'),
+                                   top=Side(style='thin'))
+            for i in range(biggest_team):
+                active = current.cell(row=current_row, column=current_column + i)
+                active.value = i + 1
+                active.fill = header_fill
+                active.border = border
+                active.alignment = Alignment(horizontal='center')
+            current_row += 1
+            team_fill = PatternFill(start_color='FF66FF99', fill_type='solid')
+            for team in team_dict.keys():
+                current.merge_cells("{col_1}{row}:{col_2}{row}".format(row=current_row,
+                                                                       col_1=get_column_letter(current_column),
+                                                                       col_2=get_column_letter(current_column +
+                                                                                               team_dict[team] - 1)))
                 active = current.cell(row=current_row, column=current_column)
-                active.value = team
-                active = current.cell(row=current_row, column=current_column + 1)
-                active.value = section.attributes["Teams"][team]
+                active.value = "{0} : {1}".format(team, team_dict[team])
+                active.fill = team_fill
+                active.border = border
                 current_row += 1
             file_name = Creator._replace_spaces(section_name)
             wb.save(path.format(name=file_name))
@@ -341,6 +367,15 @@ class Creator:
         Replaces all whitespaces with underscores in the string given
         """
         return re.sub(r"\s", "_", to_transform)
+
+    def __worker_count_from_normalized(self, normalized_count: float) -> int:
+        """
+        Calculates how many workers are equivalent to the given normalized worker count (normalized to 10)
+
+        :param normalized_count: the fraction normalized to 10 workers as company size
+        :return: the actual count of workers
+        """
+        return int(math.ceil(len(self.__workerList) * normalized_count / 10))
 
     def __assign(self) -> None:
         """
@@ -404,8 +439,7 @@ class Creator:
         random.shuffle(shuffled_workers)
         section_dict = {}
         for section in self.__sectionList:
-            section_dict[section] = int(math.ceil(len(shuffled_workers) * float(
-                section.attributes["NormalizedWorkerCount"]) / 10))
+            section_dict[section] = self.__worker_count_from_normalized(section.attributes["NormalizedWorkerCount"])
         # check if there's enough spots for every worker else crash to inform the user
         vacant = count_open_positions(section_dict)
         if vacant < len(shuffled_workers):
