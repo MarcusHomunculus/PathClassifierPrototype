@@ -86,13 +86,25 @@ class Creator:
         # continue with matching sections with workers
         self.__assign()
 
-    def create_xlsx(self, file_name: str = "../data.xlsx") -> None:
+    def create_xlsx(self, target_dir: str = "../", main_file_name: str = "data.xlsx",
+                    section_dir: str = "sections") -> None:
         """
         Generates the files which represent the data in a xlsx structure
-        :param file_name: the name of the main data file
+
+        :param target_dir: the path to the directory were the files should be dumped into
+        :param main_file_name: the name of the main data file
+        :param section_dir: an additional path to the target dir to "nest" the section files into
         """
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
+        # check if all paths end with a separator
+        if not target_dir.endswith("/"):
+            target_dir += "/"
+        if not section_dir.endswith("/"):
+            section_dir += "/"
+        # check if the main file name already contains the correct file extension
+        if not main_file_name.endswith(".xlsx"):
+            main_file_name += "xlsx"
         # create the sheet with the worker data
         wb = Workbook()
         # a blank sheet is created by default: use this instead of creating a new one
@@ -106,12 +118,12 @@ class Creator:
         # create the sheet where to every skill of a section is corresponded with a workers skill
         current = wb.create_sheet("Affiliations")
         self._create_cross_table_simple(current, 2, 2, "Affiliations")
-        wb.save(file_name)
+        wb.save(target_dir + main_file_name)
         wb.close()
         # continue with the referenced files
-        if not os.path.exists("../sections"):
-            os.mkdir("../sections")
-        self._create_team_xlsx_file("../sections/{name}.xlsx", 2, 2)
+        if not os.path.exists(target_dir + section_dir):
+            os.mkdir(target_dir + section_dir)
+        self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
 
     def create_xml(self, name: str) -> None:
         if not self._has_internal_data():
@@ -334,7 +346,6 @@ class Creator:
         Replaces all whitespaces with underscores in the string given
         """
         return re.sub(r"\s", "_", to_transform)
-
 
     def __assign(self) -> None:
         """
