@@ -3,12 +3,14 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Alignment
 from openpyxl.styles.borders import Border, Side
 from typing import Dict, List, Tuple
+from datetime import date
 import json
 import re
 import random
 import math
 import os
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElemTree
+from xml.dom import minidom
 from creation.SectionCreator import SectionCreator
 
 
@@ -137,13 +139,45 @@ class Creator:
             os.mkdir(target_dir + section_dir)
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
 
-    def create_xml(self, name: str) -> None:
+    def create_xml(self, file_name: str) -> None:
+        def prettify(elem: ElemTree.ElementTree) -> str:
+            """
+            Corrects the indentation for the generated XML
+            :param elem: the final tree to prettify
+            :return: a string which has the well known XML-structure
+            """
+            # courtesy goes to https://pymotw.com/2/xml/etree/ElementTree/create.html#pretty-printing-xml
+            tree_str = ElemTree.tostring(elem.getroot(), encoding='utf-8', method='xml')
+            restructured = minidom.parseString(tree_str)
+            return restructured.toprettyxml(indent="  ")
+
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
-        root = ET.Element("company")
-        structure = ET.SubElement(root, "structure")
-        tree = ET.ElementTree(root)
-        tree.write(name)
+        root = ElemTree.Element("company")
+        meta = ElemTree.SubElement(root, "general")
+        name = ElemTree.SubElement(meta, "name")
+        name.text = "The Product Company"
+        founded = ElemTree.SubElement(meta, "founded")
+        founded.text = str(date.today())
+        trade = ElemTree.SubElement(meta, "trade")
+        trade.text = "Product production"
+        struct = ElemTree.SubElement(root, "company_structure")
+        departments = ElemTree.SubElement(struct, "sections")
+        for depart in self.__sectionList:
+            current_section = ElemTree.SubElement(departments, "section")
+            section_name = ElemTree.SubElement(current_section, "name")
+            section_name.text = depart.attributes["Name"]
+            worker_factor = ElemTree.SubElement(current_section, "normalized_worker_count",
+                                                {"PaymentStage": str(depart.attributes["PaymentStage"])})
+            worker_factor.text = str(depart.attributes["NormalizedWorkerCount"])
+            section_teams = ElemTree.SubElement(current_section, "teams")
+            for team in depart.attributes["Teams"]:
+                current_team = ElemTree.SubElement(section_teams, "team", {"name": team})
+                current_team.text = str(self.__team_size_from_workers_and_team_fraction(
+                    float(depart.attributes["NormalizedWorkerCount"]), float(depart.attributes["Teams"][team])))
+        tree = ElemTree.ElementTree(root)
+        with open(file_name, "w") as file:
+            print(prettify(tree), file=file)
 
     def _has_internal_data(self) -> bool:
         """
@@ -354,8 +388,8 @@ class Creator:
             team_dict = {}
             biggest_team = 0
             for team in section.attributes[team_attr]:
-                head_count = math.ceil(float(section.attributes[team_attr][team]) *
-                                       self.__worker_count_from_normalized(section.attributes["NormalizedWorkerCount"]))
+                head_count = self.__team_size_from_workers_and_team_fraction(
+                    float(section.attributes["NormalizedWorkerCount"]), float(section.attributes[team_attr][team]))
                 team_dict[team] = head_count
                 if head_count > biggest_team:
                     biggest_team = head_count
@@ -399,6 +433,16 @@ class Creator:
         :return: the actual count of workers
         """
         return int(math.ceil(len(self.__workerList) * normalized_count / 10))
+
+    def __team_size_from_workers_and_team_fraction(self, normalized_count: float, team_size: float) -> float:
+        """
+        Calculates the size of the team it is allowed to have maximal
+
+        :param normalized_count: the normalized worker count for the section
+        :param team_size: the fraction of the team to the whole section
+        :return: the head count of workers the team is allowed to have tops
+        """
+        return math.ceil(team_size * self.__worker_count_from_normalized(normalized_count))
 
     def __assign(self) -> None:
         """
