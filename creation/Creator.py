@@ -175,11 +175,11 @@ class Creator:
                 current_team = ElemTree.SubElement(section_teams, "team", {"name": team})
                 current_team.text = str(self.__team_size_from_workers_and_team_fraction(
                     float(depart.attributes["NormalizedWorkerCount"]), float(depart.attributes["Teams"][team])))
-            assigned_workers = ElemTree.SubElement(current_section, "workers")
+            assigned_workers = ElemTree.SubElement(current_section, "section_workers")
             for assignment in self.__assignments:
                 if assignment[0] == depart:
                     worker = assignment[1]
-                    current_worker = ElemTree.SubElement(assigned_workers, "worker")
+                    current_worker = ElemTree.SubElement(assigned_workers, "assigned_worker")
                     current_worker.text = worker.attributes["Name"]
         tree = ElemTree.ElementTree(root)
         with open(file_name, "w") as file:
