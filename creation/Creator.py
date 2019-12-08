@@ -12,6 +12,7 @@ import os
 import xml.etree.ElementTree as ElemTree
 from xml.dom import minidom
 from creation.SectionCreator import SectionCreator
+from creation.WorkerCreator import WorkerCreator
 
 
 class InitializationException(Exception):
@@ -158,7 +159,7 @@ class Creator:
         name = ElemTree.SubElement(meta, "name")
         name.text = "The Product Company"
         founded = ElemTree.SubElement(meta, "founded")
-        founded.text = str(date.today())
+        founded.text = str(WorkerCreator.format_date(date.today()))
         trade = ElemTree.SubElement(meta, "trade")
         trade.text = "Product production"
         struct = ElemTree.SubElement(root, "company_structure")
@@ -181,6 +182,15 @@ class Creator:
                     worker = assignment[1]
                     current_worker = ElemTree.SubElement(assigned_workers, "assigned_worker")
                     current_worker.text = worker.attributes["Name"]
+        workers = ElemTree.SubElement(struct, "workers")
+        for worker in self.__workerList:
+            current_worker = ElemTree.SubElement(workers, "worker", {"id": worker.attributes["ID"]})
+            worker_name = ElemTree.SubElement(current_worker, "name")
+            worker_name.text = worker.attributes["Name"]
+            worker_job = ElemTree.SubElement(current_worker, "profession")
+            worker_job.text = worker.attributes["Job"]
+            worker_birthday = ElemTree.SubElement(current_worker, "birthday", {"age": str(worker.attributes["Age"])})
+            worker_birthday.text = str(worker.attributes["Birthday"])
         tree = ElemTree.ElementTree(root)
         with open(file_name, "w") as file:
             print(prettify(tree), file=file)

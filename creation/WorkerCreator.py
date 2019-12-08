@@ -44,7 +44,7 @@ class WorkerCreator:
                 "Job": self.job,
                 "Size": self.size,
                 "Age": self.age,
-                "Birthday": self.birthday.strftime("%d.%m.%Y"),
+                "Birthday": WorkerCreator.format_date(self.birthday),
                 "Skills": self.skills
             }
 
@@ -121,6 +121,15 @@ class WorkerCreator:
         except ValueError:
             bd = bd.replace()
         return bd
+
+    @staticmethod
+    def format_date(date: datetime) -> str:
+        """
+        Puts the given date into the "right" format: leading with the day
+        :param date: the date to transform
+        :return: a string with the date in the expected form
+        """
+        return date.strftime("%d.%m.%Y")
 
 
 if __name__ == "__main__":
