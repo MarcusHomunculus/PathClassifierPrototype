@@ -16,9 +16,19 @@ class _BinCollection:
         self.__last_match = ""
 
     def add_matched_path(self, possible_match_path: str) -> None:
-        # TODO: doc me
+        """
+        Allows to increase the count for the path given
+
+        :param possible_match_path: the path to the value which matches the given one
+        """
         def match_index(to_find: str) -> int:
-            # TODO: write some nice docu here
+            """
+            Goes through the list of stored paths and returns -1 if the path does
+            not exist yet. In contrast the list.index() function would raise an
+            ValueError which is not wanted
+            :param to_find: the path to find the index of
+            :return: the index if the path could be found else -1
+            """
             for i in range(len(self.__matched_paths)):
                 if self.__matched_paths[i] == to_find:
                     return i
@@ -33,9 +43,14 @@ class _BinCollection:
         self.__match_bins[idx] += 1
 
     def get_highest_match(self) -> (str, bool):
-        # TODO: doc me
+        """
+        Returns the path with the highest match count and if the match count is unique within the container. If this is
+        not true the matching can be assumed to have failed
+
+        :return: the path with the highest match count and if this count was unique
+        """
         max_val_is_unique = True
-        max_val = -1    # this value is impossible with the bins
+        max_val = -1
         max_idx = 0
         for i in range(len(self.__match_bins)):
             if self.__match_bins[i] > max_val:
