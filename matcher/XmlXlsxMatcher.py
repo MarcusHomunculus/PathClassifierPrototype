@@ -1,3 +1,4 @@
+from typing import List
 import toml
 
 
@@ -40,3 +41,19 @@ class XmlXlsxMatcher:
             return False
         return True
 
+    def _get_main_nodes(self) -> List[str]:
+        """
+        Extracts the names of the anchor nodes in the XML from the config
+
+        :return: an iterable of the nodes which should be trained
+        """
+        raw_list = self.__config["List_nodes"]
+        return raw_list.split(",")
+
+    def _get_universal_id(self):
+        """
+        Returns the identifier which is used to distinguish the main nodes from each other
+
+        :return: the identifier which can be used for matching
+        """
+        return self.__config["uri"]
