@@ -9,6 +9,7 @@ venv/
 *.json
 *.xlsx
 *.xml
+*.toml
 
 # LibreOffice stuff
 .~lock.data.xlsx#
