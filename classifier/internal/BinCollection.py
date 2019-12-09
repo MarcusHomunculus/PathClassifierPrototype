@@ -7,7 +7,6 @@ class _BinCollection:
     __source_path: str
     __matched_paths: List[str]
     __match_bins: List[int]
-    __last_match: str
 
     def __init__(self, source_path: str):
         self.__source_path = source_path
