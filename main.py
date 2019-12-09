@@ -45,6 +45,7 @@ if __name__ == "__main__":
         c = Creator.Creator(path_to_workers=workerFile, path_to_sections=sectionFile)
         c.create_xlsx(".", "data.xlsx", "sections")
         c.create_xml("ref.xml")
+        c.create_config_file("config.toml")
     elif shall_generate_base == "n" or shall_generate_base == "N":
         # pass here to cover all other inputs with the else branch
         pass

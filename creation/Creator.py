@@ -65,6 +65,8 @@ class Creator:
                                  definitions in JSON formatting
         """
         self.read_from_json(path_to_workers, path_to_sections)
+        # inform the config file about the global URI
+        self.__config["uri"] = "Name"
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -141,9 +143,13 @@ class Creator:
         if not os.path.exists(target_dir + section_dir):
             os.mkdir(target_dir + section_dir)
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
-        self.create_config_file(config_file_name)
 
     def create_xml(self, file_name: str) -> None:
+        """
+        Writes the internal data to a xml file
+
+        :param file_name: the path under which the generated data has to be stored
+        """
         def prettify(elem: ElemTree.ElementTree) -> str:
             """
             Corrects the indentation for the generated XML
@@ -167,6 +173,8 @@ class Creator:
         trade.text = "Product production"
         struct = ElemTree.SubElement(root, "company_structure")
         departments = ElemTree.SubElement(struct, "sections")
+        # add the "root" to the config file, too
+        self.__config["List_nodes"] = "sections"
         for depart in self.__sectionList:
             current_section = ElemTree.SubElement(departments, "section")
             section_name = ElemTree.SubElement(current_section, "name")
@@ -186,6 +194,7 @@ class Creator:
                     current_worker = ElemTree.SubElement(assigned_workers, "assigned_worker")
                     current_worker.text = worker.attributes["Name"]
         workers = ElemTree.SubElement(struct, "workers")
+        self.__config["List_nodes"] += ",workers"
         for worker in self.__workerList:
             current_worker = ElemTree.SubElement(workers, "worker", {"id": worker.attributes["ID"]})
             worker_name = ElemTree.SubElement(current_worker, "name")
@@ -200,7 +209,8 @@ class Creator:
 
     def create_config_file(self, file_path: str) -> None:
         """
-        Writes the content of the config member to the TOML-file specified
+        Writes the content of the config member to the TOML-file specified.
+        Hint: Should be generated last
 
         :param file_path: the path under which to store the config file
         """
