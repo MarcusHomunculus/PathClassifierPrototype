@@ -3,6 +3,7 @@ The main routine
 """
 
 from creation import WorkerCreator, SectionCreator, Creator
+from matcher.XmlXlsxMatcher import XmlXlsxMatcher
 
 workerFile = "workers.json"
 sectionFile = "sections.json"
@@ -50,5 +51,8 @@ if __name__ == "__main__":
         pass
     else:
         raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
+
+    print("Step three: training")
+    m = XmlXlsxMatcher("config.toml")
 
     print("Done!")
