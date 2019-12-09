@@ -8,8 +8,9 @@ class _BinCollection:
     __matched_paths: List[str]
     __match_bins: List[int]
 
-    def __init__(self, source_path: str):
-        self.__source_path = source_path
+    def __init__(self, key: str):
+        # TODO: doc me
+        self.__source_path = key
         self.__matched_paths = []
         self.__match_bins = []
         self.__last_match = ""
@@ -60,3 +61,11 @@ class _BinCollection:
                 # uniqueness is not given right now
                 max_val_is_unique = False
         return self.__matched_paths[max_idx], max_val_is_unique
+
+    def get_key(self) -> str:
+        """
+        Returns the key which the possible path matches relate to
+
+        :return: the path of the source value
+        """
+        return self.__source_path
