@@ -9,6 +9,7 @@ import re
 import random
 import math
 import os
+import toml
 import xml.etree.ElementTree as ElemTree
 from xml.dom import minidom
 from creation.SectionCreator import SectionCreator
@@ -52,6 +53,7 @@ class Creator:
     __sectionList: List[DataStruct] = []
     __workerList: List[DataStruct] = []
     __assignments: List[Tuple[DataStruct, DataStruct]] = []
+    __config: Dict[str, str] = {}
 
     def __init__(self, path_to_workers: str, path_to_sections: str):
         """
@@ -102,7 +104,7 @@ class Creator:
         self.__assign()
 
     def create_xlsx(self, target_dir: str = "../", main_file_name: str = "data.xlsx",
-                    section_dir: str = "sections") -> None:
+                    section_dir: str = "sections", config_file_name: str = "config.toml") -> None:
         """
         Generates the files which represent the data in a xlsx structure
 
@@ -139,6 +141,7 @@ class Creator:
         if not os.path.exists(target_dir + section_dir):
             os.mkdir(target_dir + section_dir)
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
+        self.create_config_file(config_file_name)
 
     def create_xml(self, file_name: str) -> None:
         def prettify(elem: ElemTree.ElementTree) -> str:
@@ -195,6 +198,15 @@ class Creator:
         with open(file_name, "w") as file:
             print(prettify(tree), file=file)
 
+    def create_config_file(self, file_path: str) -> None:
+        """
+        Writes the content of the config member to the TOML-file specified
+
+        :param file_path: the path under which to store the config file
+        """
+        with open(file_path, "w") as file:
+            toml.dump(self.__config, file)
+
     def _has_internal_data(self) -> bool:
         """
         Checks if the members are filled with data else false is returned
@@ -225,6 +237,10 @@ class Creator:
         current_col = start_column + offset_col
         for key in header_keys:
             current_cell = workbook.cell(row=table_row, column=current_col)
+            # inform the config file writer that forwarding is used
+            if key == SectionCreator.TEAM_KEY:
+                self.__config["forwarding_on"] = "{}/section file".format(workbook.title)
+            # and adapt
             key_content = key if key != SectionCreator.TEAM_KEY else "section file"
             current_cell.value = key_content
             # do some styling
