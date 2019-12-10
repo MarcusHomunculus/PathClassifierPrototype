@@ -50,9 +50,9 @@ class XmlXlsxMatcher:
         :param name: the identifier of the axis (column or row)
         :return: true if the program should open the file and search for data there
         """
-        if XmlXlsxMatcher.FORWARDING_KEY not in self.__config:
+        if self.FORWARDING_KEY not in self.__config:
             return False    # no forwarding specified
-        if self.__config[XmlXlsxMatcher.FORWARDING_KEY] != name:
+        if self.__config[self.FORWARDING_KEY] != name:
             return False
         return True
 
@@ -75,7 +75,7 @@ class XmlXlsxMatcher:
             for key in node.attr.keys():
                 new_path = current_path + "/@{}".format(key)
                 self.__classifier.add_source_path(new_path)
-                values = self._path_to_xml_values(new_path)
+                values = self._path_to_xml_values(new_path, parent_node)
                 pairs = zip(values, ids)    # hope that it fails in case both lists are not equal in length
                 self._match_in_xslx(pairs)
 
@@ -90,7 +90,7 @@ class XmlXlsxMatcher:
             """
             if not node.text.isspace():
                 self.__classifier.add_source_path(current_path)
-                values = self._path_to_xml_values(current_path)
+                values = self._path_to_xml_values(current_path, parent_node)
                 pairs = zip(values, ids)
                 self._match_in_xslx(pairs)
             if node.attrib:
@@ -108,8 +108,35 @@ class XmlXlsxMatcher:
         # use the first node as blue-print
         process_node(parent_node[0], "{}/{}".format(parent_node.tag, parent_node[0].tag), identifier_list)
 
-    def _path_to_xml_values(self, path: str, root_node: ElemTree.Element) -> List[str]:
-        pass
+    @staticmethod
+    def _path_to_xml_values(path: str, root_node: ElemTree.Element) -> List[str]:
+        """
+        Resolves the given path to the nodes (or their attribute) of interest and returns the list of their values as
+        they appear
+
+        :param path: the path to resolve
+        :param root_node: the node which contains the list of nodes eg. the node which is equivalent to the root of path
+        :return: all values of the nodes or attributes under the given path
+        """
+        # as the path model is similar to XPath: just it
+        result = re.search(r"(?<=@)\w*$", path)
+        # cut away the root node
+        root_end = path.index("/")
+        node_path = path[root_end:]
+        values = []
+        if result is None:
+            # means a node has to be processed
+            nodes = root_node.findall(".{}".format(node_path))
+            for node in nodes:
+                values.append(node.text)
+        else:
+            # means a attribute has to be processed
+            attribute_name = result.group(0)
+            node_path = node_path[:-len(attribute_name) + 2]     # -1 for the "@" and -1 for the "/" before it
+            nodes = root_node.findall(".{}".format(node_path))
+            for node in nodes:
+                values.append(node.attrib[attribute_name])
+        return values
 
     def _match_values_to_xlsx_paths(self, value_name_pairs: List[Tuple[str, str]]) -> List[str]:
         pass
