@@ -3,21 +3,22 @@ from enum import Enum
 import xml.etree.ElementTree as ElemTree
 import toml
 import re
+from openpyxl import load_workbook
 from classifier.BinClassifier import BinClassifier
 
 
 class XmlXlsxMatcher:
 
-    class TableType(Enum):
-        HORIZONTAL = 0
-        VERTICAL = 1
-        CROSS = 2
+    class HitType(Enum):
+        NO_HIT = 0
+        NAME_HIT = 1
+        VALUE_HIT = 2
 
     FORWARDING_KEY = "forwarding_on"
 
     __config = {}
     __classifier = BinClassifier()
-    __root_path: str
+    __root_xlsx: str
     __nested_xlsx_dir: str
 
     def __init__(self, path_to_config: str, path_root_xlsx: str, nested_xlsx_dir: str = "nested/"):
@@ -29,7 +30,7 @@ class XmlXlsxMatcher:
         :param nested_xlsx_dir: the path to the other Excel files which the root file might reference to
         """
         self.__read_config(path_to_config)
-        self.__root_path = path_root_xlsx
+        self.__root_xlsx = path_root_xlsx
         root_file_name = re.search(r"\b\w*\.xlsx$", path_root_xlsx).group(0)
         root_path = path_root_xlsx[:-len(root_file_name)]
         if not nested_xlsx_dir.endswith("/"):
@@ -138,8 +139,12 @@ class XmlXlsxMatcher:
                 values.append(node.attrib[attribute_name])
         return values
 
-    def _match_values_to_xlsx_paths(self, value_name_pairs: List[Tuple[str, str]]) -> List[str]:
-        pass
+    def _match_values_to_xlsx_paths(self, value_name_pairs: Iterator[Tuple[str, str]], file_path: str) -> List[str]:
+        # TODO: add some docu here
+        wb = load_workbook(file_path, True)
+        sheet_names = wb.sheetnames
+        for sheet in sheet_names:
+            self.__search_sheet_for_value(value_name_pairs, wb[sheet])
 
     def _guess_table_structure(self, id_list: List[str]):
         pass
@@ -161,6 +166,33 @@ class XmlXlsxMatcher:
         """
         return self.__config["uri"]
 
+    def __search_sheet_for_value(self, value_name_pairs: Iterator[Tuple[str, str]], sheet):
+        # TODO: write some docu here
+        def check_cell_for_content(value: str) -> XmlXlsxMatcher.HitType:
+            # TODO: return the index, too to check if the name and the value belong together when checking the other
+            # TODO: I'd like to have some docu
+            for entry in value_name_pairs:
+                if value == entry[0]:
+                    return XmlXlsxMatcher.HitType.VALUE_HIT
+                if value == entry[1]:
+                    return XmlXlsxMatcher.HitType.NAME_HIT
+            return XmlXlsxMatcher.HitType.NO_HIT
+
+        # usually a table is build column wise: so go through the sheet row wise to have a hit on the value and the
+        # name
+        for row in sheet.iter_rows():
+            name_col = ""
+            val_col = ""
+            for cell in row:
+                result = check_cell_for_content(cell.value)
+                if result == XmlXlsxMatcher.HitType.NAME_HIT:
+                    name_col = cell.column
+                elif result == XmlXlsxMatcher.HitType.VALUE_HIT:
+                    val_col = cell.column
+            # TODO: both vars should be only filled once
+            path = ""
+            self.__classifier.add_potential_match(path)
+
     def __read_config(self, path_to_file: str) -> None:
         """
         Reads in the config file
@@ -173,4 +205,5 @@ class XmlXlsxMatcher:
         self.__config = config
 
     def _match_in_xslx(self, values: Iterator[Tuple[str, str]]) -> None:
+        self._match_values_to_xlsx_paths(values, self.__root_xlsx)
         pass

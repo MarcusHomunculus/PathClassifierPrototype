@@ -13,3 +13,6 @@ venv/
 
 # LibreOffice stuff
 .~lock.data.xlsx#
+
+# other organizational stuff
+*_deploy*
