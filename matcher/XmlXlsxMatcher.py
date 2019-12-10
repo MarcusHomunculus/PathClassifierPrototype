@@ -1,7 +1,8 @@
-from typing import List, Tuple
+from typing import List, Tuple, Iterator
 from enum import Enum
 import xml.etree.ElementTree as ElemTree
 import toml
+import re
 from classifier.BinClassifier import BinClassifier
 
 
@@ -16,8 +17,10 @@ class XmlXlsxMatcher:
 
     __config = {}
     __classifier = BinClassifier()
+    __root_path: str
+    __nested_xlsx_dir: str
 
-    def __init__(self, path_to_config: str, path_root_xlsx: str, nested_xlsx_dir: str = "."):
+    def __init__(self, path_to_config: str, path_root_xlsx: str, nested_xlsx_dir: str = "nested/"):
         """
         The constructor
 
@@ -26,6 +29,12 @@ class XmlXlsxMatcher:
         :param nested_xlsx_dir: the path to the other Excel files which the root file might reference to
         """
         self.__read_config(path_to_config)
+        self.__root_path = path_root_xlsx
+        root_file_name = re.search(r"\b\w*\.xlsx$", path_root_xlsx).group(0)
+        root_path = path_root_xlsx[:-len(root_file_name)]
+        if not nested_xlsx_dir.endswith("/"):
+            nested_xlsx_dir += "/"
+        self.__nested_xlsx_dir = root_path + nested_xlsx_dir
 
     def train(self, path_to_master_xml: str, path_to_slave_xlsx) -> None:
         # TODO: doc me
@@ -33,7 +42,7 @@ class XmlXlsxMatcher:
         root = tree.getroot()
         for node in self._get_main_nodes():
             list_root = root.findall(".//{}".format(node))
-            self._process_xml_master_nodes(list_root, path_to_slave_xlsx)
+            self._process_xml_master_nodes(list_root)
 
     def _axis_is_forwarding(self, name: str) -> bool:
         """
@@ -47,21 +56,48 @@ class XmlXlsxMatcher:
             return False
         return True
 
-    def _process_xml_master_nodes(self, parent_node: ElemTree.Element, path_to_xlsx: str):
-        # TODO: doc me
-        def _process_attributes(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
-            # TODO: write some nice docu here
-            attr = node.attrib
-            if not attr:
-                # means the dict is empty -> nothing to do
-                return
-            for key in attr.keys():
+    def _process_xml_master_nodes(self, parent_node: ElemTree.Element):
+        """
+        Goes through the child list of the given node and treats them as master: meaning that the classifier will treat
+        the xlsx as slave where the values from the xml has to be found in
+
+        :param parent_node: the node which contains the list of nodes to match with the xlsx
+        :return:
+        """
+        def process_attributes(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
+            """
+            Forwards the given attributes and their name to the function which tries to come up with matches
+
+            :param node: the node which hosts the attributes
+            :param current_path: the path to current node
+            :param ids: the list of URI of all devices
+            """
+            for key in node.attr.keys():
                 new_path = current_path + "/@{}".format(key)
                 self.__classifier.add_source_path(new_path)
                 values = self._path_to_xml_values(new_path)
                 pairs = zip(values, ids)    # hope that it fails in case both lists are not equal in length
-                self._match_values_to_xlsx_paths(pairs)
-                # TODO: continue here
+                self._match_in_xslx(pairs)
+
+        def process_node(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
+            """
+            Checks the given node for a value and attributes and forwards them to the function matching them to their
+            counterpart in the xlsx. If the node contains child-nodes it processes recursively
+
+            :param node: the node to extract the data (and children) from
+            :param current_path: the path to the current node
+            :param ids: the list of URI of all devices
+            """
+            if not node.text.isspace():
+                self.__classifier.add_source_path(current_path)
+                values = self._path_to_xml_values(current_path)
+                pairs = zip(values, ids)
+                self._match_in_xslx(pairs)
+            if node.attrib:
+                process_attributes(node, current_path, ids)
+            for child_node in node:
+                name = child_node.tag
+                process_node(child_node, current_path + "/{}".format(name), ids)
 
         identifier_list = []
         # get an overview about the targets to find
@@ -69,21 +105,8 @@ class XmlXlsxMatcher:
             # start with getting the identifier
             current_id = child.findall(".//{}".format(self._get_universal_id())).tag
             identifier_list.append(current_id)
-        # use the first node as blue print
-        for i in range(len(list(parent_node[0]))):
-            pass
-
-        # TODO: this is old: maybe there's something in there which can be reused?
-        for child in parent_node:
-            for element in child:
-                name = element.tag
-                if name == self._get_universal_id():
-                    # skip this one as it has no additional data
-                    continue
-                val = str(element)
-                attributes = element.attrib
-                if not attributes:
-                    pass
+        # use the first node as blue-print
+        process_node(parent_node[0], "{}/{}".format(parent_node.tag, parent_node[0].tag), identifier_list)
 
     def _path_to_xml_values(self, path: str, root_node: ElemTree.Element) -> List[str]:
         pass
@@ -122,3 +145,5 @@ class XmlXlsxMatcher:
             config.update(toml.load(c))
         self.__config = config
 
+    def _match_in_xslx(self, values: Iterator[Tuple[str, str]]) -> None:
+        pass
