@@ -9,7 +9,7 @@ class BinClassifier:
 
     def __init__(self):
         self.__mat = []
-        self.__last_source = None
+        self.__last_source = ""
 
     def add_source_path(self, source: str):
         # TODO: your docu could stand right here
