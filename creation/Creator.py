@@ -240,8 +240,10 @@ class Creator:
         # use the first data point as template
         header_keys = data[0].attributes.keys()
         # create the table header
-        header_fill = PatternFill(start_color='FFFFFF00',
-                                  end_color='FFFFFF00', fill_type='solid')
+        header_background = 'FFFFFF00'
+        header_fill = PatternFill(start_color=header_background, fill_type='solid')
+        # inform the config file
+        self.__config["header_{}".format(workbook.title)] = header_background
         header_alignment = Alignment(horizontal='center')
         table_row = start_row + offset_row
         current_col = start_column + offset_col
@@ -362,7 +364,9 @@ class Creator:
         # set the styling
         header_border = Border(left=Side(style='medium'), right=Side(style='medium'), top=Side(style='medium'),
                                bottom=Side(style='medium'))
-        section_fill = PatternFill(start_color='FFFF9933', end_color='FFFF9933', fill_type='solid')
+        section_background = 'FFFF9933'
+        section_fill = PatternFill(start_color=section_background, fill_type='solid')
+        self.__config["header_{}".format(workbook.title)] = section_background
         current_row = start_row + offset_row
         # set row height for the section names based on the first entry using it as blueprint for length estimation
         workbook.row_dimensions[current_row].height = len(self.__sectionList[0].attributes["Name"]) * 12
@@ -437,7 +441,7 @@ class Creator:
                     biggest_team = head_count
             header_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
             border = Border(right=Side(style='thin'), bottom=Side(style='thin'), left=Side(style='thin'),
-                                   top=Side(style='thin'))
+                            top=Side(style='thin'))
             for i in range(biggest_team):
                 active = current.cell(row=current_row, column=current_column + i)
                 active.value = i + 1
