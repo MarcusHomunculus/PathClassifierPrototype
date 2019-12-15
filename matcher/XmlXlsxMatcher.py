@@ -281,6 +281,9 @@ class XmlXlsxMatcher:
                             # find the first line after the header once -> as the header should at one level the result
                             # should be true for both columns: so just pick one
                             row_data_start = get_data_start_of(sheet.iter_rows(col_id))
+                            if row_data_start == -1:
+                                # something went wrong: better abort
+                                break
                             # assemble the path for the classifier it can match later on
                             final_path = "{}/{}/@{};{}".format(path, sheet.title,
                                                                self.__to_cell_address(
@@ -294,7 +297,73 @@ class XmlXlsxMatcher:
         return
 
     def __check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
-        pass
+        """
+        Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
+        column-wise fashion. If a match could be made the resulting path is pushed into the classifier
+
+        :param sheet: the sheet to search for matches
+        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
+        :param path: the path to the current sheet (excluding the sheet itself)
+        """
+
+        def get_data_start_of(row: Iterator[Cell]) -> str:
+            """
+            Iterates through the background color of the cells of the column given and returns the first column the
+            (in the config file) specified header color is not used anymore
+
+            :param row: the row to check for the first column of data columns
+            :return: the column which should contain the first batch of data. If nothing could be found an empty string
+            """
+            header_hook = False
+            header_color = self.__config["header_{}".format(sheet.title)]
+            for item in row:
+                if item.style.bg_color == header_color:
+                    header_hook = True
+                elif header_hook and item.style.bg_color != header_color:
+                    return item.column_letter
+            return ""
+
+        for values in sheet.iter_cols():
+            # keep the index to check that the value belongs to the name and vice versa
+            row_id = -1
+            row_val = -1
+            expected = ""  # an empty string resolves to false if converted to boolean
+            for val in values:
+                if not expected:
+                    result = self.__match_cell_properties_to(val, value_name_pairs)
+                    if result.success:
+                        expected = result.expected
+                        if result.found_one_is_name:
+                            row_id = val.row
+                        else:
+                            row_val = val.row
+                    else:  # this merely for the reader and not required by the syntax
+                        continue
+                # in the team file the cell holds the name and its size determines the size property -> so check this
+                # one against the expected value, too
+                if expected:
+                    props = self.__extract_cell_properties(val)
+                    for prop in props.keys():
+                        if prop == expected:
+                            row_id = val.row if not row_id else row_id
+                            row_val = val.row if not row_val else row_val
+                            # find the first column after the header once -> as the header should at one level the
+                            # result should be true for both rows: so just pick one
+                            col_data_start = get_data_start_of(sheet.iter_cols(row_id))
+                            if not col_data_start:
+                                # something went wrong: better abort
+                                break
+                            # assemble the path for the classifier it can match later on
+                            final_path = "{}/{}/@{};{}".format(path, sheet.title,
+                                                               self.__to_cell_address(
+                                                                   self.TEMPLATE_CELL_ADDRESS_ROW_WISE, col_data_start,
+                                                                   row_val, props[prop]),
+                                                               self.__to_cell_address(
+                                                                   self.TEMPLATE_CELL_ADDRESS_ROW_WISE, col_data_start,
+                                                                   row_id, self.CELL_PROPERTY_CONTENT))
+                            self.__classifier.add_potential_match(final_path)
+                            return
+        return
 
     @staticmethod
     def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, str]:
