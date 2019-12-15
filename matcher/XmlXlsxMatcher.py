@@ -1,9 +1,11 @@
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Dict
 from enum import Enum
 import xml.etree.ElementTree as ElemTree
 import toml
 import re
 from openpyxl import load_workbook
+from openpyxl.cell.cell import Cell
+from openpyxl.worksheet.worksheet import Worksheet
 from classifier.BinClassifier import BinClassifier
 
 
@@ -14,7 +16,30 @@ class XmlXlsxMatcher:
         NAME_HIT = 1
         VALUE_HIT = 2
 
+    class CellMatchStruct:
+        success: bool
+        expected: str
+        found_one_is_name: bool
+
+        def __init__(self, success: bool, expected: str = "", found_name: bool = False):
+            """
+            The constructor
+            :param success: if the search for a value or name yielded a hit
+            :param expected: the value or name to be found to match it to the content found
+            :param found_name: true if the content found was the name else the value has been found
+            """
+            # start with a sanity check
+            if success and expected == "":
+                raise ValueError("Received an empty expected value were a string must be")
+            self.success = success
+            self.expected = expected
+            self.found_one_is_name = found_name
+
     FORWARDING_KEY = "forwarding_on"
+    TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
+    TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
+    CELL_PROPERTY_CONTENT = "c"
+    CELL_PROPERTY_WIDTH = "w"
 
     __config = {}
     __classifier = BinClassifier()
@@ -139,15 +164,17 @@ class XmlXlsxMatcher:
                 values.append(node.attrib[attribute_name])
         return values
 
-    def _match_values_to_xlsx_paths(self, value_name_pairs: Iterator[Tuple[str, str]], file_path: str) -> List[str]:
-        # TODO: add some docu here
+    def _match_values_to_xlsx_paths(self, value_name_pairs: Iterator[Tuple[str, str]], file_path: str) -> None:
+        """
+        Manages itself through the given xlsx-file and and tries to match the given pairs in the files (somewhere)
+
+        :param value_name_pairs: a list of tuples with values and their corresponding URI
+        :param file_path: the path to the file to match the values in
+        """
         wb = load_workbook(file_path, True)
         sheet_names = wb.sheetnames
         for sheet in sheet_names:
-            self.__search_sheet_for_value(value_name_pairs, wb[sheet])
-
-    def _guess_table_structure(self, id_list: List[str]):
-        pass
+            self.__search_sheet_for_value(value_name_pairs, wb[sheet], file_path)
 
     def _get_main_nodes(self) -> List[str]:
         """
@@ -166,32 +193,29 @@ class XmlXlsxMatcher:
         """
         return self.__config["uri"]
 
-    def __search_sheet_for_value(self, value_name_pairs: Iterator[Tuple[str, str]], sheet):
-        # TODO: write some docu here
-        def check_cell_for_content(value: str) -> XmlXlsxMatcher.HitType:
-            # TODO: return the index, too to check if the name and the value belong together when checking the other
-            # TODO: I'd like to have some docu
-            for entry in value_name_pairs:
-                if value == entry[0]:
-                    return XmlXlsxMatcher.HitType.VALUE_HIT
-                if value == entry[1]:
-                    return XmlXlsxMatcher.HitType.NAME_HIT
-            return XmlXlsxMatcher.HitType.NO_HIT
+    def __search_sheet_for_value(self, value_name_pairs: Iterator[Tuple[str, str]], sheet: Worksheet, path: str):
+        """
+        Analyses the given sheet in the way that it tries to find the given value-URI-pairs in all constellations it
+        knows by just applying all and throw the result at the classifier
 
+        :param value_name_pairs: a list of tuples with values and their corresponding URI
+        :param sheet: the sheet to go through
+        :param path: the current path to the sheet (for the classifier)
+        """
         # usually a table is build column wise: so go through the sheet row wise to have a hit on the value and the
         # name
-        for row in sheet.iter_rows():
-            name_col = ""
-            val_col = ""
-            for cell in row:
-                result = check_cell_for_content(cell.value)
-                if result == XmlXlsxMatcher.HitType.NAME_HIT:
-                    name_col = cell.column
-                elif result == XmlXlsxMatcher.HitType.VALUE_HIT:
-                    val_col = cell.column
-            # TODO: both vars should be only filled once
-            path = ""
-            self.__classifier.add_potential_match(path)
+        self.__check_row_wise(sheet, value_name_pairs, path)
+        # on good luck try it column wise
+        self.__check_column_wise(sheet, value_name_pairs, path)
+
+    def _match_in_xslx(self, values: Iterator[Tuple[str, str]]) -> None:
+        """
+        Starts the xlsx-reading process by analysing the main xlsx-file and manage its way through from there
+
+        :param values: a list of value-URI-pairs to find in the xlsx-files (somewhere)
+        """
+        self._match_values_to_xlsx_paths(values, self.__root_xlsx)
+        pass
 
     def __read_config(self, path_to_file: str) -> None:
         """
@@ -204,6 +228,115 @@ class XmlXlsxMatcher:
             config.update(toml.load(c))
         self.__config = config
 
-    def _match_in_xslx(self, values: Iterator[Tuple[str, str]]) -> None:
-        self._match_values_to_xlsx_paths(values, self.__root_xlsx)
+    def __check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+        """
+        Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
+        fashion. If a match could be made the resulting path is pushed into the classifier
+
+        :param sheet: the sheet to search for matches
+        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
+        :param path: the path to the current sheet (excluding the sheet itself)
+        """
+        def get_data_start_of(column: Iterator[Cell]) -> int:
+            """
+            Iterates through the background color of the cells of the column given and returns the first row the
+            (in the config file) specified header color is not used anymore
+
+            :param column: the column to check for the first row of data lines
+            :return: the row which should contain the first batch of data. If nothing could be found -1
+            """
+            header_hook = False
+            header_color = self.__config["header_{}".format(sheet.title)]
+            for item in column:
+                if item.style.bg_color == header_color:
+                    header_hook = True
+                elif header_hook and item.style.bg_color != header_color:
+                    return item.row
+            return -1
+
+        for values in sheet.iter_rows():
+            # keep the index to check that the value belongs to the name and vice versa
+            col_id = ""
+            col_val = ""
+            expected = ""  # an empty string resolves to false if converted to boolean
+            for val in values:
+                if not expected:
+                    result = self.__match_cell_properties_to(val, value_name_pairs)
+                    if result.success:
+                        expected = result.expected
+                        if result.found_one_is_name:
+                            col_id = val.column_letter
+                        else:
+                            col_val = val.column_letter
+                    else:   # this merely for the reader and not required by the syntax
+                        continue
+                # in the team file the cell holds the name and its size determines the size property -> so check this
+                # one against the expected value, too
+                if expected:
+                    props = self.__extract_cell_properties(val)
+                    for prop in props.keys():
+                        if prop == expected:
+                            col_id = val.column_letter if not col_id else col_id
+                            col_val = val.column_letter if not col_val else col_val
+                            # find the first line after the header once -> as the header should at one level the result
+                            # should be true for both columns: so just pick one
+                            row_data_start = get_data_start_of(sheet.iter_rows(col_id))
+                            # assemble the path for the classifier it can match later on
+                            final_path = "{}/{}/@{};{}".format(path, sheet.title,
+                                                               self.__to_cell_address(
+                                                                   self.TEMPLATE_CELL_ADDRESS_COL_WISE, col_val,
+                                                                   row_data_start, props[prop]),
+                                                               self.__to_cell_address(
+                                                                   self.TEMPLATE_CELL_ADDRESS_COL_WISE, col_id,
+                                                                   row_data_start, self.CELL_PROPERTY_CONTENT))
+                            self.__classifier.add_potential_match(final_path)
+                            return
+        return
+
+    def __check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
         pass
+
+    @staticmethod
+    def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, str]:
+        """
+        Takes the cell an creates a list of properties from it
+
+        :param to_extract_from: the cell the properties are wanted from
+        :return: a list of all properties supported
+        """
+        return {str(to_extract_from): XmlXlsxMatcher.CELL_PROPERTY_CONTENT}
+
+    @staticmethod
+    def __match_cell_properties_to(to_read_from: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
+        """
+        Extracts all supported properties of a cell (including its content) and checks if one property can be matched
+        to the list of value name pairs given. This function ignores the property of the cell matched on because it
+        is assumed that the first match will be on the identifier which should be the content of the cell anyway
+
+        :param to_read_from: the cell to check the properties of
+        :param value_name_pairs: a list of values expected
+        :return: a struct containing data for further processing
+        """
+        for to_find in value_name_pairs:
+            for prop in XmlXlsxMatcher.__extract_cell_properties(to_read_from).keys():
+                if prop == to_find[0]:
+                    # return that the value has been found
+                    return XmlXlsxMatcher.CellMatchStruct(True, to_find[1], False)
+                elif prop == to_find[1]:
+                    # return that the name has been found
+                    return XmlXlsxMatcher.CellMatchStruct(True, to_find[0], True)
+        # means nothing has been found: return an invalid struct
+        return XmlXlsxMatcher.CellMatchStruct(False)
+
+    @staticmethod
+    def __to_cell_address(template: str, col: str, row: int, property_identifier: str) -> str:
+        """
+        Inserts the given arguments into the template given. This function is merely a reminder to use a template
+
+        :param template: the template which holds the placeholders to replace
+        :param col: the column to insert
+        :param row: the row to insert
+        :param property_identifier: the identifier of the cell property to use as source
+        :return: a properly formatted string to be used as cell address
+        """
+        return template.format(col, row, property_identifier)
