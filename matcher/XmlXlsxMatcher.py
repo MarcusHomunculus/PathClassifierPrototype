@@ -70,6 +70,18 @@ class XmlXlsxMatcher:
             list_root = root.findall(".//{}".format(node))
             self._process_xml_master_nodes(list_root)
 
+    def test_table_reading(self):
+        # TODO: this function is only for testing and have to be removed after debug
+        file_path = "data.xlsx"
+        value_name_pairs = [
+            ("warehouseman", "pedantic jackson"),
+            ("engineer", "nostalgic curie"),
+            ("electrician", "trusting stonebraker")
+        ]
+        wb = load_workbook(file_path, True)
+        # self.__check_row_wise(wb.get_sheet_by_name("Workers"), value_name_pairs, "data.xlsx")
+        self.__check_row_wise(wb["Workers"], value_name_pairs, "data.xlsx")
+
     def _axis_is_forwarding(self, name: str) -> bool:
         """
         Returns if the column (or row) references another Excel file which might be followed
@@ -207,6 +219,7 @@ class XmlXlsxMatcher:
         self.__check_row_wise(sheet, value_name_pairs, path)
         # on good luck try it column wise
         self.__check_column_wise(sheet, value_name_pairs, path)
+        self.__check_as_cross_table(sheet, value_name_pairs, path)
 
     def _match_in_xslx(self, values: Iterator[Tuple[str, str]]) -> None:
         """
@@ -260,16 +273,18 @@ class XmlXlsxMatcher:
             col_val = ""
             expected = ""  # an empty string resolves to false if converted to boolean
             for val in values:
+                # skip empty cells
+                if val.value is None:
+                    continue
                 if not expected:
                     result = self.__match_cell_properties_to(val, value_name_pairs)
-                    if result.success:
-                        expected = result.expected
-                        if result.found_one_is_name:
-                            col_id = val.column_letter
-                        else:
-                            col_val = val.column_letter
-                    else:   # this merely for the reader and not required by the syntax
+                    if not result.success:
                         continue
+                    expected = result.expected
+                    if result.found_one_is_name:
+                        col_id = val.column_letter
+                    else:
+                        col_val = val.column_letter
                 # in the team file the cell holds the name and its size determines the size property -> so check this
                 # one against the expected value, too
                 if expected:
@@ -491,7 +506,7 @@ class XmlXlsxMatcher:
         :param to_extract_from: the cell the properties are wanted from
         :return: a list of all properties supported
         """
-        return {str(to_extract_from): XmlXlsxMatcher.CELL_PROPERTY_CONTENT}
+        return {str(to_extract_from.value): XmlXlsxMatcher.CELL_PROPERTY_CONTENT}
 
     @staticmethod
     def __match_cell_properties_to(to_read_from: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
