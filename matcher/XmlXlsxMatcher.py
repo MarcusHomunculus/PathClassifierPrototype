@@ -365,6 +365,124 @@ class XmlXlsxMatcher:
                             return
         return
 
+    def __check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+        """
+        Iterates through the sheet and tries to determine if the sheet could contain a cross table where names and
+        values are distributed along a column and a row and their matching is indicated by a 'X' in the field below
+
+        :param sheet: the sheet to search for matches
+        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
+        :param path: the path to the current sheet (excluding the sheet itself)
+        """
+        # TODO: doc me
+        # in a cross table everything should just stand in the table: so check if the values or the pairs can be found
+        # in a column and go from there
+        def check_column_for_list_entry(column: List[Cell], to_find: Iterator[str]) -> (bool, int):
+            """
+            Checks if the given column does contain at least one entry from the "list" given. If so true is returned
+            as the index of the first match
+
+            :param column: the column to search for a value of to_find
+            :param to_find: a list of values which to be hoped to be found in the column
+            :return: if a match could be found and at which index
+            """
+            # create a working copy
+            work = list(to_find)
+            start_len = float(len(work))
+            earliest_hit = 1000
+            for cell in column:
+                current_val = str(cell)
+                if current_val in work:
+                    work.remove(current_val)
+                    if cell.row < earliest_hit:
+                        earliest_hit = cell.row
+            if float(len(work)) / start_len <= 0.5:
+                # if more about 50% could be found it can be assumed that it makes sense to continue
+                return True, earliest_hit
+            return False, -1
+
+        def find_name_in_row(row: Iterator[Cell], to_find: str) -> str:
+            """
+            Goes through the given row and returns the column letter of the cell the value was found in else an
+            empty string
+
+            :param row: the row to search for the keyword
+            :param to_find: the keyword to find as value in one of the cells
+            :return: the column letter the value was found in
+            """
+            for cell in row:
+                if cell.value == to_find:
+                    return cell.column_letter
+            return ""
+
+        def find_x(start_index: int) -> Cell:
+            """
+            Returns the first cell in which a "x" could be found starting from the row index given
+            :param start_index: from which index to start looking for a x
+            :return: the first cell that contains a x
+            """
+            for row in sheet.iter_rows(min_row=start_index):
+                for row_cell in row:
+                    if str(row_cell) == "x" or str(row_cell) == "X":
+                        return row_cell
+            return None
+
+        def find_data_field_start(to_scan: Iterator[Cell], is_row: bool) -> int:
+            """
+            Triggers on the first color change of cell background color that does come after a cell that was not white
+
+            :param to_scan: the row / column to check for the color change
+            :param is_row: if the iterator at hand represents a row or a column
+            :return: the index of column or row the new color appeared
+            """
+            header_color = ""
+            for cell in to_scan:
+                if cell.style.bg_color == "ffffffff" and header_color == "":
+                    continue    # ignore white cells which might be around the table itself
+                if header_color == "":
+                    header_color = cell.style.bg_color
+                elif cell.style.bg_color != header_color:
+                    if is_row:
+                        return cell.column
+                    return cell.row
+
+        intermediate_value_name_separation = zip(*value_name_pairs)
+        values = next(intermediate_value_name_separation)
+        names = next(intermediate_value_name_separation)
+        for col_iter in sheet.iter_cols():
+            col = list(col_iter)    # transform it so we can search through it multiple times
+            success_names: Tuple[bool, int] = check_column_for_list_entry(col, names)
+            success_values: Tuple[bool, int] = check_column_for_list_entry(col, values)
+            if not (success_names[0] and success_values[0]):
+                continue
+            # find the first row which contains a 'x' and try to find it's matching value in that column
+            if success_names[0]:
+                x_cell = find_x(success_names[1])
+            else:
+                x_cell = find_x(success_values[1])
+            if x_cell is None:
+                # does not seem to be a cross table: just abort
+                return
+            # find the corresponding value or name
+            found_one = sheet["{}{}".format(col[0].column_letter, x_cell.row)]
+            counterpart = success_values[success_names.index(found_one.value)] if success_names[0]\
+                else success_names[success_values.index(found_one.value)]
+            name_column = find_name_in_row(sheet[x_cell.row], counterpart)
+            if name_column == "":
+                # seems like it isn't a cross table after all
+                return
+            # derive the start of the center field from the color changes in the detected row and column
+            field_start_col = find_data_field_start(sheet[x_cell.row], True)
+            field_start_row = find_data_field_start(sheet[col[0].column_letter], False)
+            # check which belongs where: are names in the column or values
+            top_bar_pos = "{}${}".format(field_start_col, success_values[1] if success_values[0] else success_names[1])
+            side_bar_pos = "${}{}".format(name_column, field_start_row)
+            values_start = side_bar_pos if success_values[0] else top_bar_pos
+            names_start = side_bar_pos if success_values[0] else top_bar_pos
+            current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
+                                                      names_start)
+            self.__classifier.add_potential_match(current_path)
+
     @staticmethod
     def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, str]:
         """
