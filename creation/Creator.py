@@ -552,7 +552,8 @@ class Creator:
         random.shuffle(shuffled_workers)
         section_dict = {}
         for section in self.__sectionList:
-            section_dict[section] = self.__worker_count_from_normalized(section.attributes["NormalizedWorkerCount"])
+            section_dict[section] = self.__worker_count_from_normalized(float(
+                section.attributes["NormalizedWorkerCount"]))
         # check if there's enough spots for every worker else crash to inform the user
         vacant = count_open_positions(section_dict)
         if vacant < len(shuffled_workers):
