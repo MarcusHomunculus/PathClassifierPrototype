@@ -25,6 +25,7 @@ def generate_json(worker_count: int) -> None:
 
 
 if __name__ == "__main__":
+    default_xlsx_path = "data.xlsx"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
     shall_generate_base = "y"
@@ -41,19 +42,21 @@ if __name__ == "__main__":
 
     print("Step two: Generating mock data from JSON")
     # shall_generate_mock = input("Shall I use the existing data to generate mocking data? (y/n)")
-    shall_generate_mock = "y"
+    shall_generate_mock = "n"
     if shall_generate_mock == "y" or shall_generate_mock == "Y":
         c = Creator.Creator(path_to_workers=workerFile, path_to_sections=sectionFile)
-        c.create_xlsx(".", "data.xlsx", "sections")
+        c.create_xlsx(".", default_xlsx_path, "sections")
         c.create_xml("ref.xml")
         c.create_config_file("config.toml")
-    elif shall_generate_base == "n" or shall_generate_base == "N":
+    elif shall_generate_mock == "n" or shall_generate_mock == "N":
         # pass here to cover all other inputs with the else branch
         pass
     else:
         raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
     print("Step three: training")
-    m = XmlXlsxMatcher("config.toml")
+    # TODO: get a deviating xlsx-path here?
+    m = XmlXlsxMatcher("config.toml", default_xlsx_path)
+    #m.test_table_reading()
 
     print("Done!")
