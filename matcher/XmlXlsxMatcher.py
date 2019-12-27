@@ -295,7 +295,9 @@ class XmlXlsxMatcher:
                             col_val = val.column_letter if not col_val else col_val
                             # find the first line after the header once -> as the header should at one level the result
                             # should be true for both columns: so just pick one
-                            row_data_start = get_data_start_of(sheet.iter_rows(col_id))
+                            # row_data_start = get_data_start_of(sheet.iter_cols(min_col=col_id))
+                            col_to_inspect = list(sheet.iter_rows(col_id))     # sheet[col_id]
+                            row_data_start = get_data_start_of(col_to_inspect)
                             if row_data_start == -1:
                                 # something went wrong: better abort
                                 break
