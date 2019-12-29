@@ -143,7 +143,7 @@ class XlsxProcessor:
                 if val.value is None:
                     continue
                 # housekeeping for the final path
-                if val.fill.bgColor.rgb == header_color and val.row > lowest_header_row:
+                if val.fill.bgColor.rgb == header_color and val.row >= lowest_header_row:
                     lowest_header_row = val.row
                     # the header is not of interest in a row-wise table as the classifier ignores header names
                     continue
@@ -151,10 +151,9 @@ class XlsxProcessor:
                     first_result = self.__match_cell_properties_to(val, value_name_pairs)
                     if not first_result.success:
                         continue
-                    expected = first_result.expected
                 # in the team file the cell holds the name and its size determines the size property -> so check this
                 # one against the expected value, too
-                if expected:
+                if first_result.success:
                     second_result = self.__match_expected_in(val, first_result, False)
                     if not second_result[0]:
                         continue
@@ -187,8 +186,11 @@ class XlsxProcessor:
                     # return that the value has been found
                     return XlsxProcessor.CellMatchStruct(True, to_find[1], to_read, False, props[prop])
                 elif prop == to_find[1]:
+                    # allowing identifiers outside of the content of cells makes no sense -> if this is the case crash
+                    if props[prop] != CellPropertyType.CONTENT:
+                        raise ValueError("Can't allow an identifier that is encoded in the cell except for its content")
                     # return that the name has been found
-                    return XlsxProcessor.CellMatchStruct(True, to_find[0], to_read, True)
+                    return XlsxProcessor.CellMatchStruct(True, to_find[0], to_read, True, CellPropertyType.CONTENT)
         # means nothing has been found: return an invalid struct
         return XlsxProcessor.CellMatchStruct(False)
 
