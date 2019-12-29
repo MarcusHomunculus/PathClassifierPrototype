@@ -4,6 +4,7 @@ import re
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.utils import get_column_letter
 
 from matcher.internal.CellPropertyType import CellPropertyType
 from classifier.BinClassifier import BinClassifier
@@ -163,7 +164,52 @@ class XlsxProcessor:
                     name_cell = self.__to_linear_cell_address(False, second_result[1].name_id, row_data_start,
                                                               second_result[1].name_property)
                     final_path = "{}/{}/@{};{}".format(path, sheet.title, value_cell, name_cell)
-                    # self.__classifier.add_potential_match(final_path)
+                    self.__classifier.add_potential_match(final_path)
+                    # there shouldn't be anymore data in this row
+                    break
+        return
+
+    def __check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+        """
+        Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
+        column-wise fashion. If a match could be made the resulting path is pushed into the classifier
+
+        :param sheet: the sheet to search for matches
+        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
+        :param path: the path to the current sheet (excluding the sheet itself)
+        """
+        lowest_header_col: int = 0
+        header_color = self.__config["header_{}".format(sheet.title)]
+        for values in sheet.iter_cols():
+            val: Cell
+            first_result: XlsxProcessor.CellMatchStruct = XlsxProcessor.CellMatchStruct(False)
+            for val in values:
+                # skip empty cells
+                if val.value is None:
+                    continue
+                # housekeeping for the final path
+                if val.fill.bgColor.rgb == header_color and val.col_idx >= lowest_header_col:
+                    lowest_header_col = val.col_idx
+                    # the header is not of interest in a row-wise table as the classifier ignores header names
+                    continue
+                if not first_result.success:
+                    first_result = self.__match_cell_properties_to(val, value_name_pairs)
+                    if not first_result.success:
+                        continue
+                # in the team file the cell holds the name and its size determines the size property -> so check this
+                # one against the expected value, too
+                if first_result.success:
+                    second_result = self.__match_expected_in(val, first_result, True)
+                    if not second_result[0]:
+                        continue
+                    # assemble the path for the classifier it can match later on
+                    col_data_start = get_column_letter(lowest_header_col + 1)
+                    value_cell = self.__to_linear_cell_address(False, col_data_start, int(second_result[1].value_id),
+                                                               second_result[1].value_property)
+                    name_cell = self.__to_linear_cell_address(False, col_data_start, int(second_result[1].name_id),
+                                                              second_result[1].name_property)
+                    final_path = "{}/{}/@{};{}".format(path, sheet.title, value_cell, name_cell)
+                    self.__classifier.add_potential_match(final_path)
                     # there shouldn't be anymore data in this row
                     break
         return
