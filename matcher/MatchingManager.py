@@ -18,7 +18,7 @@ class MatchingManager:
 
     def match_in_xlsx_sink(self, value_name_pairs: List[Tuple[str, str]]) -> None:
         # TODO: write some nice docu here
-        self.__xlsx_handler.match_given_values_in(self.mock_test_data())
+        self.__xlsx_handler.match_given_values_in(self.mock_test_cross_data())
 
     @staticmethod
     def mock_test_data():
@@ -26,6 +26,15 @@ class MatchingManager:
             ("warehouseman", "pedantic jackson"),
             ("engineer", "nostalgic curie"),
             ("electrician", "trusting stonebraker")
+        ]
+        return value_name_pairs
+
+    @staticmethod
+    def mock_test_cross_data():
+        value_name_pairs = [
+            ("pedantic jackson", "Logistics"),
+            ("nostalgic curie", "Research and Development"),
+            ("trusting stonebraker", "Production")
         ]
         return value_name_pairs
 
