@@ -143,7 +143,7 @@ class XlsxProcessor:
                 if val.value is None:
                     continue
                 # housekeeping for the final path
-                if val.style.bg_color == header_color and val.row > lowest_header_row:
+                if val.fill.bgColor.rgb == header_color and val.row > lowest_header_row:
                     lowest_header_row = val.row
                     # the header is not of interest in a row-wise table as the classifier ignores header names
                     continue
