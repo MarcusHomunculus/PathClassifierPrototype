@@ -68,8 +68,6 @@ class XlsxProcessor:
     FORWARDING_KEY = "forwarding_on"
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
     TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
-    CELL_PROPERTY_CONTENT = "c"
-    CELL_PROPERTY_WIDTH = "w"
 
     __classifier: BinClassifier
     __config = {}
@@ -98,17 +96,16 @@ class XlsxProcessor:
             nested_xlsx_dir += "/"
         self.__nested_xlsx_dir = root_path + nested_xlsx_dir
 
-    def match_given_values_in(self, value_name_pairs: Iterator[Tuple[str, str]], file_path: str) -> None:
+    def match_given_values_in(self, value_name_pairs: Iterator[Tuple[str, str]]) -> None:
         """
         Manages itself through the given xlsx-file and and tries to match the given pairs in the files (somewhere)
 
         :param value_name_pairs: a list of tuples with values and their corresponding URI
-        :param file_path: the path to the file to match the values in
         """
-        wb = load_workbook(file_path, True)
+        wb = load_workbook(self.__root_xlsx, True)
         sheet_names = wb.sheetnames
         for sheet in sheet_names:
-            self.__search_sheet_for_values(value_name_pairs, wb[sheet], file_path)
+            self.__search_sheet_for_values(value_name_pairs, wb[sheet], self.__root_xlsx)
 
     def __search_sheet_for_values(self, value_name_pairs: Iterator[Tuple[str, str]], sheet: Worksheet, path: str):
         """
