@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from matcher.internal.Constant import Constant
+
 
 # Moved to dedicated file as using it as nested class made more trouble then it was worth it
 class CellPropertyType(Enum):
@@ -9,14 +11,15 @@ class CellPropertyType(Enum):
     CONTENT = 1
     WIDTH = 2
 
-    CELL_PROPERTY_CONTENT = "c"
-    CELL_PROPERTY_WIDTH = "w"
+    CELL_PROPERTY_CONTENT = Constant("c")
+    CELL_PROPERTY_WIDTH = Constant("w")
 
     def __str__(self):
-        if self.value == self.CONTENT:
+        if self.value == 1:
             return self.CELL_PROPERTY_CONTENT
-        elif self.value == self.WIDTH:
+        elif self.value == 2:
             return self.CELL_PROPERTY_WIDTH
+        # raise ValueError("Unsupported type")
         return ""
 
     @staticmethod

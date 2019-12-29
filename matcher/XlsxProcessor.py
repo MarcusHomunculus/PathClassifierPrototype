@@ -135,7 +135,6 @@ class XlsxProcessor:
         lowest_header_row: int = 0
         header_color = self.__config["header_{}".format(sheet.title)]
         for values in sheet.iter_rows():
-            expected = ""  # an empty string resolves to false if converted to boolean
             val: Cell
             first_result: XlsxProcessor.CellMatchStruct = XlsxProcessor.CellMatchStruct(False)
             for val in values:
@@ -147,7 +146,7 @@ class XlsxProcessor:
                     lowest_header_row = val.row
                     # the header is not of interest in a row-wise table as the classifier ignores header names
                     continue
-                if not expected:
+                if not first_result.success:
                     first_result = self.__match_cell_properties_to(val, value_name_pairs)
                     if not first_result.success:
                         continue
@@ -164,8 +163,9 @@ class XlsxProcessor:
                     name_cell = self.__to_linear_cell_address(False, second_result[1].name_id, row_data_start,
                                                               second_result[1].name_property)
                     final_path = "{}/{}/@{};{}".format(path, sheet.title, value_cell, name_cell)
-                    self.__classifier.add_potential_match(final_path)
-                    return
+                    # self.__classifier.add_potential_match(final_path)
+                    # there shouldn't be anymore data in this row
+                    break
         return
 
     @staticmethod
@@ -262,7 +262,7 @@ class XlsxProcessor:
         :return: a properly formatted string to be used as cell address
         """
         if is_fixed_row:
-            template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_ROW_WISE
-        else:
             template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_COL_WISE
+        else:
+            template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_ROW_WISE
         return template.format(col, row, str(property_identifier))
