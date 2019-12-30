@@ -3,7 +3,6 @@ The main routine
 """
 
 from creation import WorkerCreator, SectionCreator, Creator
-from matcher.XmlXlsxMatcher import XmlXlsxMatcher
 from matcher.MatchingManager import MatchingManager
 
 workerFile = "workers.json"
