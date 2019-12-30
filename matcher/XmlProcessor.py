@@ -27,6 +27,7 @@ class XmlProcessor:
 
     def __next__(self) -> List[(str, str)]:
         # use a stack scheme as order is not relevant for the matching
+        # -> switch to a generator in a "proper" implementation
         try:
             current: Tuple[str, List[(str, str)]] = self.__targets.pop()
             self.__classifier.add_source_path(current[0])
@@ -36,17 +37,17 @@ class XmlProcessor:
 
     def read_xml(self, path_to_source: str) -> Iterator[List[(str, str)]]:
         """
+        Performs the parsing process of the given XML and prepares a list of value-name pair lists that can be pulled
+        from the returned iterator
 
         :param path_to_source: the path to the xml file to read from (for matching)
-        :return:
+        :return: an iterator returning lists of value-name pairs list by list
         """
         tree = ElemTree.parse(path_to_source)
         root = tree.getroot()
-        src_nodes: List[ElemTree.Element] = []
-        for node_name in self._get_main_node_names():
-            found_nodes = root.findall(".//{}".format(node_name))
-            src_nodes.extend(found_nodes)
-
+        for node in self._get_main_node_names():
+            list_root = root.findall(".//{}".format(node))[0]
+            self._process_xml_master_nodes(list_root)
         # continue with transforming the nodes into a list of tuples
         # TODO: pushing all to the stack is a waste of memory: use a generator instead
         # advertise as iterator for lists of value-name-pairs
@@ -92,14 +93,13 @@ class XmlProcessor:
                 process_attributes(node, current_path, ids)
             for child_node in node:
                 name = child_node.tag
+                if name == self._get_universal_id():
+                    # makes no sense to search for pairs of the same two names
+                    continue
                 process_node(child_node, current_path + "/{}".format(name), ids)
 
-        identifier_list = []
         # get an overview about the targets to find
-        for child in parent_node:
-            # start with getting the identifier
-            current_id = child.findall(".//{}".format(self._get_universal_id())).tag
-            identifier_list.append(current_id)
+        identifier_list = list(map(lambda x: x.text, parent_node.findall(".//{}".format(self._get_universal_id()))))
         # use the first node as blue-print
         process_node(parent_node[0], "{}/{}".format(parent_node.tag, parent_node[0].tag), identifier_list)
 

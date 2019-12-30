@@ -65,8 +65,8 @@ class Creator:
                                  definitions in JSON formatting
         """
         self.read_from_json(path_to_workers, path_to_sections)
-        # inform the config file about the global URI
-        self.__config["uri"] = "Name"
+        # inform the config file about the global URI -> which is in this case only required by the XML-parser
+        self.__config["uri"] = "name"
 
     def read_from_json(self, path_to_workers: str, path_to_sections: str) -> None:
         """
@@ -106,7 +106,7 @@ class Creator:
         self.__assign()
 
     def create_xlsx(self, target_dir: str = "../", main_file_name: str = "data.xlsx",
-                    section_dir: str = "sections", config_file_name: str = "config.toml") -> None:
+                    section_dir: str = "sections") -> None:
         """
         Generates the files which represent the data in a xlsx structure
 
