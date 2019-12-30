@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Iterator, Dict
+from typing import List, Tuple, Dict, Iterator
 import re
 import xml.etree.ElementTree as ElemTree
 
@@ -12,24 +12,15 @@ class XmlProcessor:
     __config: Dict[str, str]
     __targets: List[(str, List[(str, str)])]
 
-    def __init__(self, sink: BinClassifier, config: Dict[str, str], path_to_source: str):
+    def __init__(self, sink: BinClassifier, config: Dict[str, str]):
         """
         The constructor
 
         :param sink: the classifier to push the data into
         :param config: a dictionary holding config data
-        :param path_to_source: the path to the xml file to read from (for matching)
         """
         self.__classifier = sink
         self.__config = config
-        tree = ElemTree.parse(path_to_source)
-        root = tree.getroot()
-        src_nodes: List[ElemTree.Element] = []
-        for node_name in self._get_main_node_names():
-            found_nodes = root.findall(".//{}".format(node_name))
-            src_nodes.extend(found_nodes)
-        # continue with transforming the nodes into a list of tuples
-        # TODO: pushing all to the stack is a waste of memory: use a generator instead
 
     def __iter__(self) -> XmlProcessor:
         return self
@@ -42,6 +33,24 @@ class XmlProcessor:
             return current[1]
         except IndexError:
             raise StopIteration
+
+    def read_xml(self, path_to_source: str) -> Iterator[List[(str, str)]]:
+        """
+
+        :param path_to_source: the path to the xml file to read from (for matching)
+        :return:
+        """
+        tree = ElemTree.parse(path_to_source)
+        root = tree.getroot()
+        src_nodes: List[ElemTree.Element] = []
+        for node_name in self._get_main_node_names():
+            found_nodes = root.findall(".//{}".format(node_name))
+            src_nodes.extend(found_nodes)
+
+        # continue with transforming the nodes into a list of tuples
+        # TODO: pushing all to the stack is a waste of memory: use a generator instead
+        # advertise as iterator for lists of value-name-pairs
+        return self
 
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
         """

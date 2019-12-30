@@ -2,26 +2,29 @@ from typing import List, Tuple, Dict
 import toml
 
 from matcher.XlsxProcessor import XlsxProcessor
+from matcher.XmlProcessor import XmlProcessor
 from classifier.BinClassifier import BinClassifier
 
 
 class MatchingManager:
 
     __xlsx_handler: XlsxProcessor
+    __xml_handler: XmlProcessor
     __config: Dict[str, str]
     __classifier: BinClassifier
 
-    def __init__(self, config_path: str, root_xlsx_path: str, nested_xlsx_dir: str):
+    def __init__(self, config_path: str):
         self.__classifier = BinClassifier()
         self.__config = self.__read_config(config_path)
-        self.__xlsx_handler = XlsxProcessor(self.__classifier, self.__config, root_xlsx_path, nested_xlsx_dir)
 
-    def match_in_xlsx_sink(self, value_name_pairs: List[Tuple[str, str]]) -> None:
-        # TODO: write some nice docu here
-        self.__xlsx_handler.match_given_values_in(self.mock_test_cross_data())
+    def train(self, source_path: str, sink_path: str, nested_sink_dir: str = ""):
+        self.__xml_handler = XmlProcessor(self.__classifier, self.__config)
+        self.__xlsx_handler = XlsxProcessor(self.__classifier, self.__config, sink_path, nested_sink_dir)
+        for pair_list in self.__xml_handler.read_xml(source_path):
+            self.__xlsx_handler.match_given_values_in(pair_list)
 
     @staticmethod
-    def mock_test_data():
+    def __mock_test_data():
         value_name_pairs = [
             ("warehouseman", "pedantic jackson"),
             ("engineer", "nostalgic curie"),
@@ -30,7 +33,7 @@ class MatchingManager:
         return value_name_pairs
 
     @staticmethod
-    def mock_test_cross_data():
+    def __mock_test_cross_data():
         value_name_pairs = [
             ("pedantic jackson", "Logistics"),
             ("nostalgic curie", "Research and Development"),
