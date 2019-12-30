@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # TODO: get a deviating xlsx-path here?
     # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
     # m.test_table_reading()
-    manager = MatchingManager("config.toml", default_xlsx_path, "nested/")
-    manager.match_in_xlsx_sink([])
+    manager = MatchingManager("config.toml")
+    manager.train("ref.xml", default_xlsx_path, "nested/")
 
     print("Done!")
