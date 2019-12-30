@@ -1,23 +1,36 @@
-from typing import List
-from classifier.internal.BinCollection import _BinCollection
+from typing import List, Dict
+from classifier.internal.BinCollection import BinCollection
+from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
 
 
 class BinClassifier:
 
-    __mat: List[_BinCollection]
+    __mat: List[BinCollection]
     __last_source: str
+    __result_buffer: Dict[str, str]
 
     def __init__(self):
         self.__mat = []
         self.__last_source = ""
+        self.__result_buffer = {}
 
-    def add_source_path(self, source: str):
-        # TODO: your docu could stand right here
-        self.__mat.append(_BinCollection(source))
+    def add_source_path(self, source: str) -> None:
+        """
+        Allows to set a path which all following potential matches will be assigned to. Except a new path is specified
+        via add_source_path or add_potential_match
+
+        :param source: the path to the data in the source file
+        """
+        self.__mat.append(BinCollection(source))
         self.__last_source = source
 
-    def add_potential_match(self, match_path: str, source_path: str = ""):
-        # TODO: write some docu here
+    def add_potential_match(self, match_path: str, source_path: str = "") -> None:
+        """
+        Allows to add a new sink path to an either already added source path or the source path specified
+
+        :param match_path: the path to a potential match in the sink file
+        :param source_path: the path to data in the source file
+        """
         if source_path == "":
             source_path = self.__last_source
         if source_path == "" or match_path == "":
@@ -26,5 +39,13 @@ class BinClassifier:
             if entry.get_key() == source_path:
                 entry.add_matched_path(match_path)
 
-    def train(self):
-        pass
+    def train(self) -> None:
+        """
+        Performs the learning / matching based on the data received previously
+        """
+        for path_bin in self.__mat:
+            path, success = path_bin.get_highest_match()
+            if not success:
+                raise MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
+                    path_bin.get_key()))
+            self.__result_buffer[path] = path_bin.get_key()

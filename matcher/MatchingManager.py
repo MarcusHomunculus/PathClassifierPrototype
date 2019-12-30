@@ -22,6 +22,8 @@ class MatchingManager:
         self.__xlsx_handler = XlsxProcessor(self.__classifier, self.__config, sink_path, nested_sink_dir)
         for pair_list in self.__xml_handler.read_xml(source_path):
             self.__xlsx_handler.match_given_values_in(pair_list)
+        # digest the whole pile of data
+        self.__classifier.train()
 
     @staticmethod
     def __mock_test_data():
