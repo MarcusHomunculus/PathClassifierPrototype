@@ -21,6 +21,7 @@ class XmlProcessor:
         """
         self.__classifier = sink
         self.__config = config
+        self.__targets = []
 
     def __iter__(self) -> XmlProcessor:
         return self
@@ -49,7 +50,6 @@ class XmlProcessor:
             list_root = root.findall(".//{}".format(node))[0]
             self._process_xml_master_nodes(list_root)
         # continue with transforming the nodes into a list of tuples
-        # TODO: pushing all to the stack is a waste of memory: use a generator instead
         # advertise as iterator for lists of value-name-pairs
         return self
 
@@ -69,7 +69,7 @@ class XmlProcessor:
             :param current_path: the path to current node
             :param ids: the list of URI of all devices
             """
-            for key in node.attr.keys():
+            for key in node.attrib.keys():
                 new_path = current_path + "/@{}".format(key)
                 # self.__classifier.add_source_path(new_path)
                 values = self._path_to_xml_values(new_path, parent_node)
@@ -127,7 +127,7 @@ class XmlProcessor:
         else:
             # means a attribute has to be processed
             attribute_name = result.group(0)
-            node_path = node_path[:-len(attribute_name) + 2]     # -1 for the "@" and -1 for the "/" before it
+            node_path = node_path[:-(len(attribute_name) + 2)]     # -1 for the "@" and -1 for the "/" before it
             nodes = root_node.findall(".{}".format(node_path))
             for node in nodes:
                 values.append(node.attrib[attribute_name])
