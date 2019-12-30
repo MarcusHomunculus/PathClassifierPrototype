@@ -4,6 +4,7 @@ The main routine
 
 from creation import WorkerCreator, SectionCreator, Creator
 from matcher.XmlXlsxMatcher import XmlXlsxMatcher
+from matcher.MatchingManager import MatchingManager
 
 workerFile = "workers.json"
 sectionFile = "sections.json"
@@ -56,7 +57,9 @@ if __name__ == "__main__":
 
     print("Step three: training")
     # TODO: get a deviating xlsx-path here?
-    m = XmlXlsxMatcher("config.toml", default_xlsx_path)
-    #m.test_table_reading()
+    # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
+    # m.test_table_reading()
+    manager = MatchingManager("config.toml")
+    manager.train("ref.xml", default_xlsx_path, "nested/")
 
     print("Done!")

@@ -38,7 +38,7 @@ class _BinCollection:
         if idx == -1:
             self.__matched_paths.append(possible_match_path)
             idx = len(self.__matched_paths) - 1
-        if len(self.__match_bins) < idx:
+        if len(self.__match_bins) <= idx:
             self.__match_bins.append(0)
         self.__match_bins[idx] += 1
 
