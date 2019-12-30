@@ -250,19 +250,18 @@ class XlsxProcessor:
                 return True, earliest_hit
             return False, -1
 
-        def find_name_in_row(row: Iterator[Cell], to_find: str) -> str:
+        def find_name_in_col(column: Iterator[Cell], to_find: str) -> Cell:
             """
-            Goes through the given row and returns the column letter of the cell the value was found in else an
-            empty string
+            Goes through the given column and returns the cell the value was found in else None
 
-            :param row: the row to search for the keyword
+            :param column: the column to search for the keyword
             :param to_find: the keyword to find as value in one of the cells
-            :return: the column letter the value was found in
+            :return: the row index the value was found in
             """
-            for cell in row:
+            for cell in column:
                 if cell.value == to_find:
-                    return cell.column_letter
-            return ""
+                    return cell
+            return None
 
         def find_x(start_index: int) -> Cell:
             """
@@ -287,7 +286,7 @@ class XlsxProcessor:
             """
             header_color = ""
             for cell in to_scan:
-                if cell.fill.bgColor.rgb == "ffffffff" and header_color == "":
+                if cell.fill.bgColor.rgb == "00000000" and header_color == "":
                     continue    # ignore white cells which might be around the table itself
                 if header_color == "":
                     header_color = cell.fill.bgColor.rgb
@@ -315,23 +314,25 @@ class XlsxProcessor:
                 return
             # find the corresponding value or name
             found_one = sheet["{}{}".format(col[0].column_letter, x_cell.row)]
-            counterpart = values[names.index(found_one.value)] if success_names[0]\
+            counterpart_content = values[names.index(found_one.value)] if success_names[0]\
                 else names[values.index(found_one.value)]
-            name_column = find_name_in_row(sheet[x_cell.row], counterpart)
-            if name_column == "":
+            counterpart_cell = find_name_in_col(sheet[x_cell.column], counterpart_content)
+            if counterpart_cell is None:
                 # seems like it isn't a cross table after all
                 return
             # derive the start of the center field from the color changes in the detected row and column
-            field_start_col = find_data_field_start(sheet[x_cell.row], True)
-            field_start_row = find_data_field_start(sheet[col[0].column_letter], False)
+            field_start_col = get_column_letter(find_data_field_start(sheet[x_cell.row], True))
+            field_start_row = find_data_field_start(sheet[counterpart_cell.column_letter], False)
             # check which belongs where: are names in the column or values
-            top_bar_pos = "{}${}".format(field_start_col, success_values[1] if success_values[0] else success_names[1])
-            side_bar_pos = "${}{}".format(name_column, field_start_row)
+            top_bar_pos = "{}${}".format(field_start_col, counterpart_cell.row)
+            side_bar_pos = "${}{}".format(col[0].column_letter, field_start_row)
             values_start = side_bar_pos if success_values[0] else top_bar_pos
-            names_start = side_bar_pos if success_values[0] else top_bar_pos
+            names_start = top_bar_pos if success_values[0] else side_bar_pos
             current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
                                                       names_start)
-            #self.__classifier.add_potential_match(current_path)
+            self.__classifier.add_potential_match(current_path)
+            # the cross table has been identified, next attempts should fail anyway so abort search
+            return
 
     @staticmethod
     def __match_cell_properties_to(to_read: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
