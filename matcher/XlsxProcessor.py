@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Iterator, Dict
 import re
+import os
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
@@ -8,6 +9,7 @@ from openpyxl.utils import get_column_letter
 
 from matcher.internal.CellPropertyType import CellPropertyType
 from classifier.BinClassifier import BinClassifier
+from classifier.error.MatchExceptions import NoMatchCandidateException
 
 
 class XlsxProcessor:
@@ -132,7 +134,10 @@ class XlsxProcessor:
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
         """
+        # TODO: if forwarding becomes more complex maybe switch to a state machine?
         lowest_header_row: int = 0
+        forward_idx = -1
+        handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
         header_color = self.__config["header_{}".format(sheet.title)]
         for values in sheet.iter_rows():
             val: Cell
@@ -144,8 +149,11 @@ class XlsxProcessor:
                 # housekeeping for the final path
                 if val.fill.bgColor.rgb == header_color and val.row >= lowest_header_row:
                     lowest_header_row = val.row
-                    # the header is not of interest in a row-wise table as the classifier ignores header names
-                    continue
+                    # generally the header is not of interest in a row-wise table as the classifier ignores header names
+                    # but check for forwarding
+                    if val.value != forwarding_column_name:
+                        continue
+                    forward_idx = val.column
                 if not first_result.success:
                     first_result = self.__match_cell_properties_to(val, value_name_pairs)
                     if not first_result.success:
@@ -166,6 +174,10 @@ class XlsxProcessor:
                     self.__classifier.add_potential_match(final_path)
                     # there shouldn't be anymore data in this row
                     break
+                if val.column == forward_idx and re.match(r"\.xlsx", val.value):
+                    # forwarding is on -> names should be in the table so only look for values in the new file
+                    self.__follow_to_file(val.value, value_name_pairs, "{}/{}".format(path, sheet.title))
+                    # TODO: continue here -> check if the file even exists
         return
 
     def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
@@ -339,6 +351,30 @@ class XlsxProcessor:
             self.__classifier.add_potential_match(current_path)
             # the cross table has been identified, next attempts should fail anyway so abort search
             return
+
+    def __includes_forwarding(self, sheet_name: str) -> Tuple[bool, str]:
+        """
+        Checks if the given sheet name is registered with a column which forwards to another file
+
+        :param sheet_name: the name to check for
+        :return: a tuple which contains if forwarding is to be expected and the column which is to be used for that
+        """
+        # as this project has only one root file the separation is simple
+        names = self.__config[self.FORWARDING_KEY].split('/')
+        if len(names) != 2:
+            raise ValueError("The config file is wrong: expecting a path made of sheet/column. Received: " +
+                             self.__config[self.FORWARDING_KEY])
+        if names[0] != sheet_name:
+            return False, ""
+        return True, names[1]
+
+    def __follow_to_file(self, file_name: str, value_name_pairs: Iterator[(str, str)], current_path: str):
+        file_path = self.__nested_xlsx_dir + file_name + file_name
+        if not os.path.exists(file_path):
+            raise NoMatchCandidateException("Could not find a file under: " + file_path)
+        wb = load_workbook(file_path)
+        for sheet in wb.sheetnames:
+            self._search_sheet_for_values(value_name_pairs, )
 
     @staticmethod
     def __match_cell_properties_to(to_read: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:

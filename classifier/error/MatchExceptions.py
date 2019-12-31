@@ -4,3 +4,7 @@ class MultipleMatchingCandidatesException(Exception):
 
 class NoMatchCandidateException(Exception):
     pass
+
+
+class ForwardFileNotFound(Exception):
+    pass
