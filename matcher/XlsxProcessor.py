@@ -119,9 +119,8 @@ class XlsxProcessor:
         """
         # usually a table is build column wise: so go through the sheet row wise to have a hit on the value and the
         # name
-        # self._check_row_wise(sheet, value_name_pairs, path)
-        # on good luck try it column wise
-        # self._check_column_wise(sheet, value_name_pairs, path)
+        self._check_row_wise(sheet, value_name_pairs, path)
+        self._check_column_wise(sheet, value_name_pairs, path)
         self._check_as_cross_table(sheet, value_name_pairs, path)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
@@ -223,15 +222,14 @@ class XlsxProcessor:
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
         """
-        # TODO: doc me
         # in a cross table everything should just stand in the table: so check if the values or the pairs can be found
         # in a column and go from there
-        def check_column_for_list_entry(column: List[Cell], to_find: Iterator[str]) -> (bool, int):
+        def check_line_for_list_entries(line: List[Cell], to_find: Iterator[str]) -> (bool, int):
             """
-            Checks if the given column does contain at least one entry from the "list" given. If so true is returned
-            as the index of the first match
+            Checks if the given column or row does contain at least 50% of the entries from the "list" given. If so true
+            is returned as the index of the first match
 
-            :param column: the column to search for a value of to_find
+            :param line: the column or row to search for a value of to_find
             :param to_find: a list of values which to be hoped to be found in the column
             :return: if a match could be found and at which index
             """
@@ -239,7 +237,7 @@ class XlsxProcessor:
             work = list(to_find)
             start_len = float(len(work))
             earliest_hit = 1000
-            for cell in column:
+            for cell in line:
                 current_val = str(cell.value)
                 if current_val in work:
                     work.remove(current_val)
@@ -300,34 +298,42 @@ class XlsxProcessor:
         names = next(intermediate_value_name_separation)
         for col_iter in sheet.iter_cols():
             col = list(col_iter)    # transform it so we can search through it multiple times
-            success_names: Tuple[bool, int] = check_column_for_list_entry(col, names)
-            success_values: Tuple[bool, int] = check_column_for_list_entry(col, values)
-            if not (success_names[0] or success_values[0]):
+            success_names, name_index = check_line_for_list_entries(col, names)
+            success_values, value_index = check_line_for_list_entries(col, values)
+            if not (success_names or success_values):
                 continue
             # find the first row which contains a 'x' and try to find it's matching value in that column
-            if success_names[0]:
-                x_cell = find_x(success_names[1])
+            if success_names:
+                x_cell = find_x(name_index)
             else:
-                x_cell = find_x(success_values[1])
+                x_cell = find_x(value_index)
             if x_cell is None:
                 # does not seem to be a cross table: just abort
                 return
+            # TODO: a proper implementation might better check for multiple 'X'
             # find the corresponding value or name
             found_one = sheet["{}{}".format(col[0].column_letter, x_cell.row)]
-            counterpart_content = values[names.index(found_one.value)] if success_names[0]\
-                else names[values.index(found_one.value)]
+            counterpart_content = values[names.index(found_one.value)] if success_names else names[values.index(
+                found_one.value)]
             counterpart_cell = find_name_in_col(sheet[x_cell.column], counterpart_content)
             if counterpart_cell is None:
                 # seems like it isn't a cross table after all
                 return
-            # derive the start of the center field from the color changes in the detected row and column
+            # perform a final check if the column contains eg. most of the names the row should contain most of the
+            # values
+            confirmed, _ = check_line_for_list_entries(sheet[counterpart_cell.row], names if success_values else values)
+            if not confirmed:
+                # most of the expected counter values could not be found in a row -> doesn't seem to be cross table
+                return
+            # derive the start of the center field from the color changes in the detected row and column -> this is
+            # should be more robust then working with the names itself which might be incomplete
             field_start_col = get_column_letter(find_data_field_start(sheet[x_cell.row], True))
             field_start_row = find_data_field_start(sheet[counterpart_cell.column_letter], False)
             # check which belongs where: are names in the column or values
             top_bar_pos = "{}${}".format(field_start_col, counterpart_cell.row)
             side_bar_pos = "${}{}".format(col[0].column_letter, field_start_row)
-            values_start = side_bar_pos if success_values[0] else top_bar_pos
-            names_start = top_bar_pos if success_values[0] else side_bar_pos
+            values_start = side_bar_pos if success_values else top_bar_pos
+            names_start = top_bar_pos if success_values else side_bar_pos
             current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
                                                       names_start)
             self.__classifier.add_potential_match(current_path)
