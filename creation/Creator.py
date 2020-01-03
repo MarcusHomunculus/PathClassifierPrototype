@@ -184,9 +184,10 @@ class Creator:
             worker_factor.text = str(depart.attributes["NormalizedWorkerCount"])
             section_teams = ElemTree.SubElement(current_section, "teams")
             for team in depart.attributes["Teams"]:
-                current_team = ElemTree.SubElement(section_teams, "team", {"name": team})
-                current_team.text = str(self.__team_size_from_workers_and_team_fraction(
-                    float(depart.attributes["NormalizedWorkerCount"]), float(depart.attributes["Teams"][team])))
+                team_size = str(self.__team_size_from_workers_and_team_fraction(float(
+                    depart.attributes["NormalizedWorkerCount"]), float(depart.attributes["Teams"][team])))
+                current_team = ElemTree.SubElement(section_teams, "team", {"max_size": team_size})
+                current_team.text = team
             assigned_workers = ElemTree.SubElement(current_section, "section_workers")
             for assignment in self.__assignments:
                 if assignment[0] == depart:
