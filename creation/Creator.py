@@ -106,7 +106,7 @@ class Creator:
         self.__assign()
 
     def create_xlsx(self, target_dir: str = "../", main_file_name: str = "data.xlsx",
-                    section_dir: str = "sections", config_file_name: str = "config.toml") -> None:
+                    section_dir: str = "sections") -> None:
         """
         Generates the files which represent the data in a xlsx structure
 
@@ -163,6 +163,10 @@ class Creator:
 
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
+        # the team node do not differ much in their attribute -> add an additional config parameter to tell the matcher
+        # which attribute it should resort to in nested cases
+        self.__config["general_id_attribute"] = "name"
+        # start building the tree
         root = ElemTree.Element("company")
         meta = ElemTree.SubElement(root, "general")
         name = ElemTree.SubElement(meta, "name")
@@ -553,7 +557,8 @@ class Creator:
         random.shuffle(shuffled_workers)
         section_dict = {}
         for section in self.__sectionList:
-            section_dict[section] = self.__worker_count_from_normalized(section.attributes["NormalizedWorkerCount"])
+            section_dict[section] = self.__worker_count_from_normalized(float(
+                section.attributes["NormalizedWorkerCount"]))
         # check if there's enough spots for every worker else crash to inform the user
         vacant = count_open_positions(section_dict)
         if vacant < len(shuffled_workers):
