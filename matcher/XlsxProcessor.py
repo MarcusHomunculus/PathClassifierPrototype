@@ -8,11 +8,36 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter
 
 from matcher.internal.enum.CellPropertyType import CellPropertyType
+from matcher.internal.data_struct.CellMatching import CellMatchResult, CellMatchingStruct
+from matcher.internal.data_struct.CellPosition import CellPosition
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
 
 class XlsxProcessor:
+
+    # class CellLineResult:
+    #     result: CellMatchingStruct
+    #     position_value: CellPosition
+    #     position_name: CellPosition
+    #
+    #     def __init__(self, result: CellMatchingStruct, position_value: CellPosition, position_name: CellPosition):
+    #         """
+    #         The constructor
+    #
+    #         :param result: the search result holding struct
+    #         :param position_value: the cell position of the value found (might be invalid depending on the result)
+    #         :param position_name: the cell position of the name found (might be invalid depending on the result)
+    #         """
+    #         self.result = result
+    #         self.position_value = position_value
+    #         self.position_name = position_name
+    #
+    #     def read_successful(self) -> bool:
+    #         """
+    #         Returns if a value-name-pair could be matched
+    #         """
+    #         return self.result == CellMatchResult.ALL_FOUND
 
     class PathDataCluster:
         value_id: str
@@ -367,6 +392,12 @@ class XlsxProcessor:
                     return XlsxProcessor.CellMatchStruct(True, to_find[0], to_read, True, CellPropertyType.CONTENT)
         # means nothing has been found: return an invalid struct
         return XlsxProcessor.CellMatchStruct(False)
+
+    @staticmethod
+    def __scan_cell_line_for(value_name_pairs: Iterator[Tuple[str, str]],
+                             to_scan: Iterator[Cell],
+                             forward_index: int = -1) -> CellLineResult:
+        pass
 
     @staticmethod
     def __match_expected_in(to_read: Cell, previous_data: CellMatchStruct, return_rows: bool)\
