@@ -7,44 +7,12 @@ from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter
 
-from matcher.internal.CellPropertyType import CellPropertyType
+from matcher.internal.enum.CellPropertyType import CellPropertyType
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
 
 class XlsxProcessor:
-
-    class CellMatchStruct:
-        success: bool
-        expected: str
-        found_one: Cell
-        found_one_is_name: bool
-        found_ones_property_indicator: CellPropertyType
-
-        def __init__(self,
-                     success: bool,
-                     expected: str = "",
-                     found_one: Cell = None,
-                     found_name: bool = False,
-                     property_type: CellPropertyType = CellPropertyType.NONE):
-            """
-            The constructor
-
-            :param success: if the search for a value or name yielded a hit
-            :param expected: the value or name to be found to match it to the content found
-            :param found_one: the value that has triggered the success
-            :param found_name: true if the content found was the name else the value has been found
-            :param property_type: in case the value to the names has been found set this to indicate the property it was
-                                  derived from
-            """
-            # start with a sanity check
-            if success and expected == "":
-                raise ValueError("Received an empty expected value were a string must be")
-            self.success = success
-            self.expected = expected
-            self.found_one = found_one
-            self.found_one_is_name = found_name
-            self.found_ones_property_indicator = property_type
 
     class PathDataCluster:
         value_id: str
@@ -119,8 +87,6 @@ class XlsxProcessor:
         :param sheet: the sheet to go through
         :param path: the current path to the sheet (for the classifier)
         """
-        # usually a table is build column wise: so go through the sheet row wise to have a hit on the value and the
-        # name
         self._check_row_wise(sheet, value_name_pairs, path)
         self._check_column_wise(sheet, value_name_pairs, path)
         self._check_as_cross_table(sheet, value_name_pairs, path)
