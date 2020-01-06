@@ -142,6 +142,8 @@ class Creator:
         # continue with the referenced files
         if not os.path.exists(target_dir + section_dir):
             os.mkdir(target_dir + section_dir)
+        # add an identifier which the path can use to symbolize forwarding 'cause it is not used as sheet or file name
+        self.__config["path_forward_symbol"] = "&>"
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
 
     def create_xml(self, file_name: str) -> None:

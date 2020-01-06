@@ -28,7 +28,7 @@ if __name__ == "__main__":
     default_xlsx_path = "data.xlsx"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
-    shall_generate_base = "y"
+    shall_generate_base = "n"
     if shall_generate_base == "y" or shall_generate_base == "Y":
         # means to generate the json files from stock
         # worker_cnt = int(input("How many workers should be generated?"))
