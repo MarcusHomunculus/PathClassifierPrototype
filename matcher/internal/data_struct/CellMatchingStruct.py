@@ -1,23 +1,19 @@
-from enum import Enum
+from enum import IntEnum
 from typing import List, Tuple, Iterator
 
-from matcher.internal.data_struct.CellPosition import CellPosition
 
-
-class CellMatchResult(Enum):
+class CellMatchResult(IntEnum):
     NO_FINDING = 0
-    NAME_FOUND = 1
-    VALUE_FOUND = 2
-    ALL_FOUND = 3
+    ALL_FOUND = 1
+    NAME_FOUND = 2
+    VALUE_FOUND = 3
 
 
-class CellMatchStruct:
+class CellMatchingStruct:
     success_type: CellMatchResult
     expected: str
-    position_name: CellPosition
-    position_value: CellPosition
     __expected: str
-    __pool: Iterator[Tuple[str, str]]
+    __pool: List[Tuple[str, str]]
 
     def __init__(self, value_name_pairs: Iterator[Tuple[str, str]]):
         """
@@ -27,6 +23,26 @@ class CellMatchStruct:
         """
         self.success_type = CellMatchResult.NO_FINDING
         self.__expected = ""
-        self.position_name = CellPosition.create_invalid()
-        self.position_value = CellPosition.create_invalid()
-        self.__pool = value_name_pairs
+        self.__pool = list(value_name_pairs)
+
+    def test_value(self, value: str) -> CellMatchResult:
+        """
+        Tests the given values against the values (and names) which are expected to be found
+
+        :param value: the value to test against the list of value-name-pairs given to the constructor
+        :return: if something could be matched in the form of an enum
+        """
+        if self.success_type is CellMatchResult.NO_FINDING:
+            for entry in self.__pool:
+                if entry[0] == value:
+                    self.expected = entry[1]
+                    self.success_type = CellMatchResult.VALUE_FOUND
+                elif entry[1] == value:
+                    self.expected = entry[0]
+                    self.success_type = CellMatchResult.NAME_FOUND
+                return self.success_type
+        if self.success_type.value > 1:
+            # means either the value or the name is missing
+            if self.expected == value:
+                self.success_type = CellMatchResult.ALL_FOUND
+            return self.success_type
