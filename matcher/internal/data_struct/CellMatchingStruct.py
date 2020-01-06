@@ -1,4 +1,7 @@
 from enum import Enum
+from typing import List, Tuple, Iterator
+
+from matcher.internal.data_struct.CellPosition import CellPosition
 
 
 class CellMatchResult(Enum):
@@ -9,33 +12,21 @@ class CellMatchResult(Enum):
 
 
 class CellMatchStruct:
-    success: bool
+    success_type: CellMatchResult
     expected: str
-    found_one: Cell
-    found_one_is_name: bool
-    found_ones_property_indicator: CellPropertyType
+    position_name: CellPosition
+    position_value: CellPosition
+    __expected: str
+    __pool: Iterator[Tuple[str, str]]
 
-    def __init__(self,
-                 success: bool,
-                 expected: str = "",
-                 found_one: Cell = None,
-                 found_name: bool = False,
-                 property_type: CellPropertyType = CellPropertyType.NONE):
+    def __init__(self, value_name_pairs: Iterator[Tuple[str, str]]):
         """
         The constructor
 
-        :param success: if the search for a value or name yielded a hit
-        :param expected: the value or name to be found to match it to the content found
-        :param found_one: the value that has triggered the success
-        :param found_name: true if the content found was the name else the value has been found
-        :param property_type: in case the value to the names has been found set this to indicate the property it was
-                              derived from
+        :param value_name_pairs: A list of values pairs with there root node name
         """
-        # start with a sanity check
-        if success and expected == "":
-            raise ValueError("Received an empty expected value were a string must be")
-        self.success = success
-        self.expected = expected
-        self.found_one = found_one
-        self.found_one_is_name = found_name
-        self.found_ones_property_indicator = property_type
+        self.success_type = CellMatchResult.NO_FINDING
+        self.__expected = ""
+        self.position_name = CellPosition.create_invalid()
+        self.position_value = CellPosition.create_invalid()
+        self.__pool = value_name_pairs
