@@ -3,6 +3,7 @@ from typing import List, Tuple, Iterator
 
 
 class CellMatchResult(IntEnum):
+    # please keep in mind that this enum is interpreted via a bitmask
     NO_FINDING = 0
     ALL_FOUND = 1
     NAME_FOUND = 2

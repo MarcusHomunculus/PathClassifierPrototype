@@ -429,6 +429,15 @@ class XlsxProcessor:
             """
             return to_check.fill.bgColor.rgb == header_color or to_check.fill.fgColor.rgb == header_color
 
+        def matches_bitwise(current_state: CellMatchResult, mask: CellMatchResult) -> bool:
+            """
+            Checks if the bit in mask is set in current_state: if so true is returned
+            :param current_state: the current state of the CellMatchStruct
+            :param mask: the intended property to check for (get's interpreted as mask)
+            :return: true if the bit in current_state is set which is also set in mask
+            """
+            return bool(current_state & mask)
+
         if value_name_pairs is None:
             value_name_pairs = []
         current_idx = 0     # which results in starting the iteration with 1 which is the start for excel
@@ -462,9 +471,9 @@ class XlsxProcessor:
                 cell_data = XlsxProcessor.__extract_cell_properties(cell)
                 for data in cell_data.keys():
                     result = result_struct.test_value(data)
-                    if result == CellMatchResult.NAME_FOUND:
+                    if matches_bitwise(result, CellMatchResult.NAME_FOUND):
                         name_position = CellPosition.create_from(cell, cell_data[data])
-                    elif result == CellMatchResult.VALUE_FOUND:
+                    elif matches_bitwise(result, CellMatchResult.VALUE_FOUND):
                         value_position = CellPosition.create_from(cell, cell_data[data])
             if name_position.is_valid() and value_position.is_valid():
                 # no reason to continue -> everything has been found
