@@ -348,6 +348,10 @@ class XlsxProcessor:
             # the cross table has been identified, next attempts should fail anyway so abort search
             return
 
+    def _follow_forward_to(self, file: str, testing_struct: CellMatchingStruct) -> ForwardHelperCluster:
+        # TODO: first check if the file even exists
+        pass
+
     def __includes_forwarding(self, sheet_name: str) -> Tuple[bool, str]:
         """
         Checks if the given sheet name is registered with a column which forwards to another file
@@ -370,7 +374,7 @@ class XlsxProcessor:
             raise NoMatchCandidateException("Could not find a file under: " + file_path)
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
-            self._search_sheet_for_values(value_name_pairs, sheet)
+            self._search_sheet_for_values(value_name_pairs, sheet, current_path)
 
     @staticmethod
     def __match_cell_properties_to(to_read: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
@@ -398,12 +402,24 @@ class XlsxProcessor:
         # means nothing has been found: return an invalid struct
         return XlsxProcessor.CellMatchStruct(False)
 
-    def __scan_cell_line_for(self, value_name_pairs: Iterator[(str, str)],
-                             to_scan: Iterator[Cell],
-                             header_color: str,
-                             forward_index: int,
+    def __scan_cell_line_for(self, to_scan: Iterator[Cell],
+                             value_name_pairs: Iterator[(str, str)] = None,
+                             forward_index: int = -1,
+                             header_color: str = "",
                              forward_name: str = "") -> LineResultStruct:
-        # TODO: doc me
+        """
+        Goes through the iteration of cells and checks if it can find useful information in it. The result is returned
+        in form of struct which holds data depending on the found data
+
+        :param to_scan: the iterator for a collection of cells (which is usually either a column or a row)
+        :param value_name_pairs: the values and names to find in the sheet. Set if you want to find these data
+        :param forward_index: set this parameter if at this given index the content has to be interpreted as file name
+        :param header_color: set this value if a header has to be detected
+        :param forward_name: set this value if a header field containing this value indicates forwarding
+        :return: a situation dependent initialized instance of LineResultStruct
+        """
+        if value_name_pairs is None:
+            value_name_pairs = []
         current_idx = 0     # which results in starting the iteration with 1 which is the start for excel
         value_path = ""
         result_struct = CellMatchingStruct(value_name_pairs)
@@ -439,56 +455,12 @@ class XlsxProcessor:
                         value_position = CellPosition.create_from(cell, cell_data[data])
             if name_position.is_valid() and value_position.is_valid():
                 # no reason to continue -> everything has been found
-                return LineResultStruct.create_data_found(result_struct, value_position, name_position, value_path)
+                return LineResultStruct.create_data_pair_found(result_struct, value_position, name_position)
         if is_header:
             return LineResultStruct.create_header_found(CellPosition.create_invalid())
+        if value_position.is_valid():
+            return LineResultStruct.create_value_found(result_struct, value_position, value_path)
         return LineResultStruct.create_no_find()
-
-    @staticmethod
-    def __match_expected_in(to_read: Cell, previous_data: CellMatchStruct, return_rows: bool)\
-            -> Tuple[bool, XlsxProcessor.PathDataCluster]:
-        """
-        Checks the given cell if it contains the data expected
-
-        :param to_read: the cell to check for the expected content / value
-        :param previous_data: the data which was collected with the first match
-        :param return_rows: if the 2nd and the 3rd tuple members should contain the rows or column letters of the
-                            matched cells
-        :return: a tuple which tells if a match could be made and if so contains the cell ID where the value and the
-                 cell ID where the name was matched (the ID depends on the 3rd function parameter)
-
-        """
-        def assemble_success_data(property_type: CellPropertyType) -> Tuple[bool, XlsxProcessor.PathDataCluster]:
-            """
-            Builds the tuple to return by using the data available in the outer function
-
-            :return: the final result of the matching with the path data when a match was successful
-            """
-            first_id = previous_data.found_one.row if return_rows else previous_data.found_one.column_letter
-            second_id = to_read.row if return_rows else to_read.column_letter
-            if previous_data.found_one_is_name:
-                name_id = first_id
-                if previous_data.found_ones_property_indicator != CellPropertyType.CONTENT:
-                    # allowing to derive IDs from other cell properties then their content is a pitfall -> abort then
-                    raise AttributeError
-                name_property = CellPropertyType.CONTENT
-                value_id = second_id
-                value_property = property_type
-            else:
-                name_id = second_id
-                if property_type != CellPropertyType.CONTENT:
-                    # allowing to derive IDs from other cell properties then their content is a pitfall -> abort then
-                    raise AttributeError
-                name_property = CellPropertyType.CONTENT
-                value_id = first_id
-                value_property = previous_data.found_ones_property_indicator
-            return True, XlsxProcessor.PathDataCluster(value_id, value_property, name_id, name_property)
-
-        props = XlsxProcessor.__extract_cell_properties(to_read)
-        for prop in props.keys():
-            if prop == previous_data.expected:
-                return assemble_success_data(props[prop])
-        return False, XlsxProcessor.PathDataCluster("", CellPropertyType.NONE, "", CellPropertyType.NONE)
 
     @staticmethod
     def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, CellPropertyType]:
@@ -516,7 +488,3 @@ class XlsxProcessor:
         else:
             template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_ROW_WISE
         return template.format(col, row, str(property_identifier))
-
-    def _follow_forward_to(self, file: str, testing_struct: CellMatchingStruct) -> ForwardHelperCluster:
-        # TODO: first check if the file even exists
-        pass

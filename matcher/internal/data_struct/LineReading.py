@@ -8,7 +8,8 @@ from matcher.internal.data_struct.CellPosition import CellPosition
 class LineResultType(IntEnum):
     NO_FINDING = 0
     HEADER_FOUND = 1
-    DATA_FOUND = 2
+    DATA_PAIR_FOUND = 2
+    VALUE_FOUND = 3
 
 
 class LineResultStruct:
@@ -57,20 +58,33 @@ class LineResultStruct:
                                 forward_position, "")
 
     @staticmethod
-    def create_data_found(match_result: CellMatchingStruct,
-                          value_position: CellPosition,
-                          name_position: CellPosition,
-                          value_path: str = "") -> LineResultStruct:
+    def create_data_pair_found(match_result: CellMatchingStruct,
+                               value_position: CellPosition,
+                               name_position: CellPosition) -> LineResultStruct:
         """
         Creates an instance which holds the position of the data found
 
         :param match_result: the struct holding the match information
         :param value_position: the position of the value in the table
         :param name_position: the position of the name in the table
-        :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
         :return: an instance representing an success in finding a value name pair in the given line
         """
-        return LineResultStruct(LineResultType.DATA_FOUND, match_result, value_position, name_position, value_path)
+        return LineResultStruct(LineResultType.DATA_PAIR_FOUND, match_result, value_position, name_position, "")
+
+    @staticmethod
+    def create_value_found(match_result: CellMatchingStruct,
+                           value_position: CellPosition,
+                           value_path: str) -> LineResultStruct:
+        """
+        Creates an instance which holds the state when only a value has been found
+
+        :param match_result: the struct holding the match information
+        :param value_position: the position of the value in the table
+        :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
+        :return: an instance representing in success finding a value but not more
+        """
+        return LineResultStruct(LineResultType.VALUE_FOUND, match_result, value_position, CellPosition.create_invalid(),
+                                value_path)
 
     def header_contains_forwarding(self) -> bool:
         """
