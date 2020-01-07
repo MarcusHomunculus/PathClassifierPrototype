@@ -8,8 +8,7 @@ from matcher.internal.data_struct.CellPosition import CellPosition
 class LineResultType(IntEnum):
     NO_FINDING = 0
     HEADER_FOUND = 1
-    DATA_PAIR_FOUND = 2
-    VALUE_FOUND = 3
+    DATA_FOUND = 2
 
 
 class LineResultStruct:
@@ -69,7 +68,7 @@ class LineResultStruct:
         :param name_position: the position of the name in the table
         :return: an instance representing an success in finding a value name pair in the given line
         """
-        return LineResultStruct(LineResultType.DATA_PAIR_FOUND, match_result, value_position, name_position, "")
+        return LineResultStruct(LineResultType.DATA_FOUND, match_result, value_position, name_position, "")
 
     @staticmethod
     def create_value_found(match_result: CellMatchingStruct,
@@ -83,10 +82,10 @@ class LineResultStruct:
         :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
         :return: an instance representing in success finding a value but not more
         """
-        return LineResultStruct(LineResultType.VALUE_FOUND, match_result, value_position, CellPosition.create_invalid(),
+        return LineResultStruct(LineResultType.DATA_FOUND, match_result, value_position, CellPosition.create_invalid(),
                                 value_path)
 
-    def header_contains_forwarding(self) -> bool:
+    def contains_header_forwarding_position(self) -> bool:
         """
         Answers if the struct represents a header which holds a valid position for a header row or column
 
@@ -94,7 +93,7 @@ class LineResultStruct:
         """
         return self.read_result == LineResultType.HEADER_FOUND and self.name_or_forward_position.is_valid()
 
-    def contains_forwarding_path(self) -> bool:
+    def contains_value_forwarding_path(self) -> bool:
         """
         Returns if the value path is set or not. If so the value path and the name path should differ in the path
         information given to the classifier
