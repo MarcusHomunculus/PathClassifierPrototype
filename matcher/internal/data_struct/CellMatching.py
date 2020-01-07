@@ -33,18 +33,20 @@ class CellMatchingStruct:
         """
         if self.success_type is CellMatchResult.NO_FINDING:
             for entry in self.__pool:
+                to_return = CellMatchResult.NO_FINDING
                 if entry[0] == value:
                     self.__expected = entry[1]
-                    self.success_type = CellMatchResult.VALUE_FOUND
+                    to_return = self.success_type = CellMatchResult.VALUE_FOUND
                 elif entry[1] == value:
                     self.__expected = entry[0]
-                    self.success_type = CellMatchResult.NAME_FOUND
-                return self.success_type
+                    to_return = self.success_type = CellMatchResult.NAME_FOUND
+                return to_return
         if self.success_type.value > 1:
             # means either the value or the name is missing
             if self.__expected == value:
                 self.success_type = CellMatchResult.ALL_FOUND
-            return self.success_type
+                return self.success_type
+            return CellMatchResult.NO_FINDING
 
     def get_value_name_pairs(self) -> List[Tuple[str, str]]:
         """
