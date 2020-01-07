@@ -66,6 +66,7 @@ class XlsxProcessor:
             return self.struct, self.value_position, self.final_path
 
     FORWARDING_KEY = "forwarding_on"
+    FORWARDING_PATH_SYMBOL = "&>"
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
     TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
 
@@ -141,7 +142,7 @@ class XlsxProcessor:
         row_index = -1
         for row in sheet.iter_rows():
             row_index += 1
-            result = self.__scan_cell_line_for(row, value_name_pairs, forward_index, header_color,
+            result = self.__scan_cell_line_for(row, current_sheet_path, value_name_pairs, forward_index, header_color,
                                                "" if not handle_forwarding else forwarding_column_name)
             if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
@@ -196,8 +197,8 @@ class XlsxProcessor:
         col_index = -1
         for column in sheet.iter_cols():
             col_index += 1
-            result = self.__scan_cell_line_for(column, value_name_pairs, forward_index, header_color,
-                                               "" if not handle_forwarding else forwarding_row_name)
+            result = self.__scan_cell_line_for(column, current_sheet_path, value_name_pairs, forward_index,
+                                               header_color, "" if not handle_forwarding else forwarding_row_name)
             if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
             elif result.read_result == CellPositionStructType.HEADER_FOUND:
@@ -360,9 +361,33 @@ class XlsxProcessor:
             # the cross table has been identified, next attempts should fail anyway so abort search
             return
 
-    def _follow_forward_to(self, file: str, testing_struct: CellMatchingStruct) -> ForwardHelperCluster:
-        # TODO: first check if the file even exists
-        pass
+    def _follow_forward_to(self, file_name: str, work_path: str,
+                           testing_struct: CellMatchingStruct) -> CellPositionStruct:
+        """
+        Performs a row- and a column-wise search for the value in the file specified
+
+        :param file_name: the file name to check for the value
+        :param work_path: the internal path which describes the "address" from the root-file
+        :param testing_struct: the struct which can be used to find the value
+        :return: A CellPositionStruct of "type" value_found or no_find
+        """
+        file_path = self.__nested_xlsx_dir + file_name
+        if not os.path.exists(file_path):
+            raise NoMatchCandidateException("Could not find {} file under: {}".format(file_name, file_path))
+        path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_SYMBOL])
+        # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
+        # be stupid
+        value_name_pairs = [(testing_struct.get_missing_entry(), "")]
+        wb = load_workbook(file_path)
+        for sheet in wb.sheetnames:
+            # return the first value found
+            result_row = self._check_row_wise(sheet, value_name_pairs, path)
+            if result_row.contains_value_forwarding_path():
+                return result_row
+            result_col = self._check_column_wise(sheet, value_name_pairs, path)
+            if result_col.contains_value_forwarding_path():
+                return result_col
+        return CellPositionStruct.create_no_find()
 
     def __includes_forwarding(self, sheet_name: str) -> Tuple[bool, str]:
         """
@@ -380,24 +405,15 @@ class XlsxProcessor:
             return False, ""
         return True, names[1]
 
-    def __follow_to_file(self, file_name: str, value_name_pairs: Iterator[(str, str)], current_path: str):
-        file_path = self.__nested_xlsx_dir + file_name + file_name
-        if not os.path.exists(file_path):
-            raise NoMatchCandidateException("Could not find a file under: " + file_path)
-        wb = load_workbook(file_path)
-        for sheet in wb.sheetnames:
-            self._search_sheet_for_values(value_name_pairs, sheet, current_path)
-
-    def __scan_cell_line_for(self, to_scan: Iterator[Cell],
-                             value_name_pairs: Iterator[(str, str)] = None,
-                             forward_index: int = -1,
-                             header_color: str = "",
-                             forward_name: str = "") -> CellPositionStruct:
+    def __scan_cell_line_for(self, to_scan: Iterator[Cell], current_path: str,
+                             value_name_pairs: Iterator[(str, str)] = None, forward_index: int = -1,
+                             header_color: str = "", forward_name: str = "") -> CellPositionStruct:
         """
         Goes through the iteration of cells and checks if it can find useful information in it. The result is returned
         in form of struct which holds data depending on the found data
 
         :param to_scan: the iterator for a collection of cells (which is usually either a column or a row)
+        :param current_path: the current path within the file / sheet structure
         :param value_name_pairs: the values and names to find in the sheet. Set if you want to find these data
         :param forward_index: set this parameter if at this given index the content has to be interpreted as file name
         :param header_color: set this value if a header has to be detected
@@ -427,10 +443,12 @@ class XlsxProcessor:
                 continue
             # now the cell should contain some data -> find out if it is data of interest
             if current_idx == forward_index:
-                result = self._follow_forward_to(cell.value, result_struct)
+                result = self._follow_forward_to(cell.value, current_path, result_struct)
                 # write directly to value_position as the name shouldn't be found in the forwarding file
                 # -> this would beat the whole purpose of the forwarding
-                result_struct, value_position, value_path = result.to_tuple()
+                result_struct = result.match_struct
+                value_position = result.value_position
+                value_path = result.value_path
             else:
                 cell_data = XlsxProcessor.__extract_cell_properties(cell)
                 for data in cell_data.keys():

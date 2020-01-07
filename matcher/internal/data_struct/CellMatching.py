@@ -45,3 +45,20 @@ class CellMatchingStruct:
             if self.__expected == value:
                 self.success_type = CellMatchResult.ALL_FOUND
             return self.success_type
+
+    def get_value_name_pairs(self) -> List[Tuple[str, str]]:
+        """
+        Returns a copy of the stored value-name pairs
+
+        :return: a list of tuple which represent value-name pairs
+        """
+        return list(self.__pool)
+
+    def get_missing_entry(self) -> str:
+        """
+        If a name (or value) has been found the other part of the pair can be received with this call. If no pair has
+        been selected in the list of value-name-pairs an empty string is returned
+
+        :return: the companion entry to an already found name (or value) or an empty string
+        """
+        return self.__expected
