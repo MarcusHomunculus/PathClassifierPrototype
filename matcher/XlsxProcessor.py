@@ -134,6 +134,7 @@ class XlsxProcessor:
         :return a LineResultStruct if only a value has been found: this is important for forwarded searches else an
                 invalid / empty struct
         """
+        current_sheet_path = "{}/{}".format(path, sheet.title)
         lowest_header_row: int = 0
         forward_index = -1
         handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
@@ -149,6 +150,7 @@ class XlsxProcessor:
                 lowest_header_row = row_index
                 if result.contains_header_forwarding_position():
                     forward_index = column_index_from_string(result.name_or_forward_position.column)
+                continue
             # else data has been found
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
@@ -163,7 +165,6 @@ class XlsxProcessor:
             row_data_start = lowest_header_row + 1
             value_cell = self.__to_linear_cell_address(False, result.value_position.column, row_data_start,
                                                        result.value_position.read_type)
-            current_sheet_path = "{}/{}".format(path, sheet.title)
             value_path = current_sheet_path if not result.contains_value_forwarding_path() else result.value_path
             final_path = "{}/@{};".format(value_path, value_cell)
             name_cell = self.__to_linear_cell_address(False, result.name_or_forward_position.column, row_data_start,
@@ -178,62 +179,8 @@ class XlsxProcessor:
         # if something was found it has been pushed to the classifier already -> so no need to return anything
         return LineResultStruct.create_no_find()
 
-    def _check_row_wise_old(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
-        """
-        Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
-        fashion. If a match could be made the resulting path is pushed into the classifier
-
-        :param sheet: the sheet to search for matches
-        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
-        :param path: the path to the current sheet (excluding the sheet itself)
-        """
-        # TODO: if forwarding becomes more complex maybe switch to a state machine?
-        lowest_header_row: int = 0
-        forward_idx = -1
-        handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
-        header_color = self.__config["header_{}".format(sheet.title)]
-        for values in sheet.iter_rows():
-            val: Cell
-            first_result: XlsxProcessor.CellMatchStruct = XlsxProcessor.CellMatchStruct(False)
-            for val in values:
-                # skip empty cells
-                if val.value is None:
-                    continue
-                # housekeeping for the final path
-                if val.fill.bgColor.rgb == header_color and val.row >= lowest_header_row:
-                    lowest_header_row = val.row
-                    # generally the header is not of interest in a row-wise table as the classifier ignores header names
-                    # but check for forwarding
-                    if val.value != forwarding_column_name:
-                        continue
-                    forward_idx = val.column
-                if not first_result.success:
-                    first_result = self.__match_cell_properties_to(val, value_name_pairs)
-                    if not first_result.success:
-                        continue
-                # in the team file the cell holds the name and its size determines the size property -> so check this
-                # one against the expected value, too
-                if first_result.success:
-                    second_result = self.__match_expected_in(val, first_result, False)
-                    if not second_result[0]:
-                        continue
-                    # assemble the path for the classifier it can match later on
-                    row_data_start = lowest_header_row + 1
-                    value_cell = self.__to_linear_cell_address(False, second_result[1].value_id, row_data_start,
-                                                               second_result[1].value_property)
-                    name_cell = self.__to_linear_cell_address(False, second_result[1].name_id, row_data_start,
-                                                              second_result[1].name_property)
-                    final_path = "{}/{}/@{};{}".format(path, sheet.title, value_cell, name_cell)
-                    self.__classifier.add_potential_match(final_path)
-                    # there shouldn't be anymore data in this row
-                    break
-                if val.column == forward_idx and re.match(r"\.xlsx", val.value):
-                    # forwarding is on -> names should be in the table so only look for values in the new file
-                    self.__follow_to_file(val.value, value_name_pairs, "{}/{}".format(path, sheet.title))
-                    # TODO: continue here -> check if the file even exists
-        return
-
-    def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+    def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
+                           path: str) -> LineResultStruct:
         """
         Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
         column-wise fashion. If a match could be made the resulting path is pushed into the classifier
@@ -242,41 +189,50 @@ class XlsxProcessor:
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
         """
+        current_sheet_path = "{}/{}".format(path, sheet.title)
         lowest_header_col: int = 0
+        forward_index = -1
+        handle_forwarding, forwarding_row_name = self.__includes_forwarding(sheet.title)
         header_color = self.__config["header_{}".format(sheet.title)]
-        for values in sheet.iter_cols():
-            val: Cell
-            first_result: XlsxProcessor.CellMatchStruct = XlsxProcessor.CellMatchStruct(False)
-            for val in values:
-                # skip empty cells
-                if val.value is None:
-                    continue
-                # housekeeping for the final path
-                if val.fill.bgColor.rgb == header_color and val.col_idx >= lowest_header_col:
-                    lowest_header_col = val.col_idx
-                    # the header is not of interest in a row-wise table as the classifier ignores header names
-                    continue
-                if not first_result.success:
-                    first_result = self.__match_cell_properties_to(val, value_name_pairs)
-                    if not first_result.success:
-                        continue
-                # in the team file the cell holds the name and its size determines the size property -> so check this
-                # one against the expected value, too
-                if first_result.success:
-                    second_result = self.__match_expected_in(val, first_result, True)
-                    if not second_result[0]:
-                        continue
-                    # assemble the path for the classifier it can match later on
-                    col_data_start = get_column_letter(lowest_header_col + 1)
-                    value_cell = self.__to_linear_cell_address(False, col_data_start, int(second_result[1].value_id),
-                                                               second_result[1].value_property)
-                    name_cell = self.__to_linear_cell_address(False, col_data_start, int(second_result[1].name_id),
-                                                              second_result[1].name_property)
-                    final_path = "{}/{}/@{};{}".format(path, sheet.title, value_cell, name_cell)
-                    self.__classifier.add_potential_match(final_path)
-                    # there shouldn't be anymore data in this row
-                    break
-        return
+        col_index = -1
+        for column in sheet.iter_cols():
+            col_index += 1
+            result = self.__scan_cell_line_for(column, value_name_pairs, forward_index, header_color,
+                                               "" if not handle_forwarding else forwarding_row_name)
+            if result.read_result == LineResultType.NO_FINDING:
+                continue
+            elif result.read_result == LineResultType.HEADER_FOUND:
+                lowest_header_col = col_index
+                if result.contains_header_forwarding_position():
+                    forward_index = result.name_or_forward_position.row
+                continue
+            # else data has been found
+            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND:
+                # only a value has been found -> forward the information to the caller -> but if no header has been
+                # found the orientation is probably bogus
+                if lowest_header_col > 0:
+                    return result
+                return LineResultStruct.create_no_find()
+            elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
+                # this case shouldn't exist in reality yet cover it to be on the safe side
+                continue
+            # else a pair has been detected -> collect all the required data and push the result into the classifier
+            col_data_start = get_column_letter(lowest_header_col + 1)
+            value_cell = self.__to_linear_cell_address(True, col_data_start, result.value_position.row,
+                                                       result.value_position.read_type)
+            value_path = current_sheet_path if not result.contains_value_forwarding_path() else result.value_path
+            final_path = "{}/@{};".format(value_path, value_cell)
+            name_cell = self.__to_linear_cell_address(True, col_data_start, result.name_or_forward_position.row,
+                                                      result.name_or_forward_position.read_type)
+            if result.contains_value_forwarding_path():
+                # prepend the current path to the name path to indicate that both differ
+                name_cell = "{}/@{}".format(current_sheet_path, name_cell)
+            else:
+                name_cell = "@{}".format(name_cell)
+            final_path += name_cell
+            self.__classifier.add_potential_match(final_path)
+        # if something was found it has been pushed to the classifier already -> so no need to return anything
+        return LineResultStruct.create_no_find()
 
     def _check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
         """
@@ -432,32 +388,6 @@ class XlsxProcessor:
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
             self._search_sheet_for_values(value_name_pairs, sheet, current_path)
-
-    @staticmethod
-    def __match_cell_properties_to(to_read: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
-        """
-        Extracts all supported properties of a cell (including its content) and checks if one property can be matched
-        to the list of value name pairs given. This function ignores the property of the cell matched on because it
-        is assumed that the first match will be on the identifier which should be the content of the cell anyway
-
-        :param to_read: the cell to check the properties of
-        :param value_name_pairs: a list of values expected
-        :return: a struct containing data for further processing
-        """
-        for to_find in value_name_pairs:
-            props = XlsxProcessor.__extract_cell_properties(to_read)
-            for prop in props.keys():
-                if prop == to_find[0]:
-                    # return that the value has been found
-                    return XlsxProcessor.CellMatchStruct(True, to_find[1], to_read, False, props[prop])
-                elif prop == to_find[1]:
-                    # allowing identifiers outside of the content of cells makes no sense -> if this is the case crash
-                    if props[prop] != CellPropertyType.CONTENT:
-                        raise ValueError("Can't allow an identifier that is encoded in the cell except for its content")
-                    # return that the name has been found
-                    return XlsxProcessor.CellMatchStruct(True, to_find[0], to_read, True, CellPropertyType.CONTENT)
-        # means nothing has been found: return an invalid struct
-        return XlsxProcessor.CellMatchStruct(False)
 
     def __scan_cell_line_for(self, to_scan: Iterator[Cell],
                              value_name_pairs: Iterator[(str, str)] = None,
