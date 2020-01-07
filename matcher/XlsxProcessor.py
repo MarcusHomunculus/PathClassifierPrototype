@@ -8,9 +8,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter, column_index_from_string
 
 from matcher.internal.enum.CellPropertyType import CellPropertyType
-from matcher.internal.data_struct.LineReading import LineResultStruct, LineResultType
 from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMatchResult
-from matcher.internal.data_struct.CellPosition import CellPosition
+from matcher.internal.data_struct.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
@@ -123,7 +122,7 @@ class XlsxProcessor:
         self._check_as_cross_table(sheet, value_name_pairs, path)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
-                        path: str) -> LineResultStruct:
+                        path: str) -> CellPositionStruct:
         """
         Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
         fashion. If a match could be made the resulting path is pushed into the classifier
@@ -144,9 +143,9 @@ class XlsxProcessor:
             row_index += 1
             result = self.__scan_cell_line_for(row, value_name_pairs, forward_index, header_color,
                                                "" if not handle_forwarding else forwarding_column_name)
-            if result.read_result == LineResultType.NO_FINDING:
+            if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
-            elif result.read_result == LineResultType.HEADER_FOUND:
+            elif result.read_result == CellPositionStructType.HEADER_FOUND:
                 lowest_header_row = row_index
                 if result.contains_header_forwarding_position():
                     forward_index = column_index_from_string(result.name_or_forward_position.column)
@@ -157,7 +156,7 @@ class XlsxProcessor:
                 # found the orientation is probably bogus
                 if lowest_header_row > 0:
                     return result
-                return LineResultStruct.create_no_find()
+                return CellPositionStruct.create_no_find()
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -177,10 +176,10 @@ class XlsxProcessor:
             final_path += name_cell
             self.__classifier.add_potential_match(final_path)
         # if something was found it has been pushed to the classifier already -> so no need to return anything
-        return LineResultStruct.create_no_find()
+        return CellPositionStruct.create_no_find()
 
     def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
-                           path: str) -> LineResultStruct:
+                           path: str) -> CellPositionStruct:
         """
         Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
         column-wise fashion. If a match could be made the resulting path is pushed into the classifier
@@ -199,9 +198,9 @@ class XlsxProcessor:
             col_index += 1
             result = self.__scan_cell_line_for(column, value_name_pairs, forward_index, header_color,
                                                "" if not handle_forwarding else forwarding_row_name)
-            if result.read_result == LineResultType.NO_FINDING:
+            if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
-            elif result.read_result == LineResultType.HEADER_FOUND:
+            elif result.read_result == CellPositionStructType.HEADER_FOUND:
                 lowest_header_col = col_index
                 if result.contains_header_forwarding_position():
                     forward_index = result.name_or_forward_position.row
@@ -212,7 +211,7 @@ class XlsxProcessor:
                 # found the orientation is probably bogus
                 if lowest_header_col > 0:
                     return result
-                return LineResultStruct.create_no_find()
+                return CellPositionStruct.create_no_find()
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -232,7 +231,7 @@ class XlsxProcessor:
             final_path += name_cell
             self.__classifier.add_potential_match(final_path)
         # if something was found it has been pushed to the classifier already -> so no need to return anything
-        return LineResultStruct.create_no_find()
+        return CellPositionStruct.create_no_find()
 
     def _check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
         """
@@ -393,7 +392,7 @@ class XlsxProcessor:
                              value_name_pairs: Iterator[(str, str)] = None,
                              forward_index: int = -1,
                              header_color: str = "",
-                             forward_name: str = "") -> LineResultStruct:
+                             forward_name: str = "") -> CellPositionStruct:
         """
         Goes through the iteration of cells and checks if it can find useful information in it. The result is returned
         in form of struct which holds data depending on the found data
@@ -422,8 +421,8 @@ class XlsxProcessor:
                 if cell.value == forward_name:
                     # return immediately as only one forwarding index is expected
                     # -> if multiple are required use a state machine
-                    return LineResultStruct.create_header_found(CellPosition.create_from(cell,
-                                                                                         CellPropertyType.CONTENT))
+                    return CellPositionStruct.create_header_found(CellPosition.create_from(cell,
+                                                                                           CellPropertyType.CONTENT))
                 is_header = True
                 continue
             # now the cell should contain some data -> find out if it is data of interest
@@ -442,14 +441,14 @@ class XlsxProcessor:
                         value_position = CellPosition.create_from(cell, cell_data[data])
             if name_position.is_valid() and value_position.is_valid():
                 # no reason to continue -> everything has been found
-                return LineResultStruct.create_data_pair_found(result_struct, value_position, name_position)
+                return CellPositionStruct.create_data_pair_found(result_struct, value_position, name_position)
         # keep this separated as their separation ensures that header and data are detected in different lines
         # -> prefer the value over the header as no detected header means no correctly detected table
         if value_position.is_valid():
-            return LineResultStruct.create_value_found(result_struct, value_position, value_path)
+            return CellPositionStruct.create_value_found(result_struct, value_position, value_path)
         if is_header:
-            return LineResultStruct.create_header_found(CellPosition.create_invalid())
-        return LineResultStruct.create_no_find()
+            return CellPositionStruct.create_header_found(CellPosition.create_invalid())
+        return CellPositionStruct.create_no_find()
 
     @staticmethod
     def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, CellPropertyType]:
