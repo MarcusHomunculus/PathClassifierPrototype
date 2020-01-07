@@ -11,7 +11,6 @@ class CellMatchResult(IntEnum):
 
 class CellMatchingStruct:
     success_type: CellMatchResult
-    expected: str
     __expected: str
     __pool: List[Tuple[str, str]]
 
@@ -35,14 +34,14 @@ class CellMatchingStruct:
         if self.success_type is CellMatchResult.NO_FINDING:
             for entry in self.__pool:
                 if entry[0] == value:
-                    self.expected = entry[1]
+                    self.__expected = entry[1]
                     self.success_type = CellMatchResult.VALUE_FOUND
                 elif entry[1] == value:
-                    self.expected = entry[0]
+                    self.__expected = entry[0]
                     self.success_type = CellMatchResult.NAME_FOUND
                 return self.success_type
         if self.success_type.value > 1:
             # means either the value or the name is missing
-            if self.expected == value:
+            if self.__expected == value:
                 self.success_type = CellMatchResult.ALL_FOUND
             return self.success_type
