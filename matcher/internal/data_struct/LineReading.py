@@ -16,12 +16,14 @@ class LineResultStruct:
     match_struct: CellMatchingStruct
     value_position: CellPosition
     name_or_forward_position: CellPosition
+    value_path: str
 
     def __init__(self,
                  read_result: LineResultType,
                  data_result: CellMatchingStruct,
                  value_position: CellPosition,
-                 name_position: CellPosition):
+                 name_position: CellPosition,
+                 value_path: str):
         """
         The constructor which is discouraged to be used outside of the static factory methods
         """
@@ -29,6 +31,7 @@ class LineResultStruct:
         self.match_struct = data_result
         self.value_position = value_position
         self.name_or_forward_position = name_position
+        self.value_path = value_path
 
     @staticmethod
     def create_no_find() -> LineResultStruct:
@@ -38,7 +41,7 @@ class LineResultStruct:
         :return an instance representing nothing
         """
         return LineResultStruct(LineResultType.NO_FINDING, CellMatchingStruct([]), CellPosition.create_invalid(),
-                                CellPosition.create_invalid())
+                                CellPosition.create_invalid(), "")
 
     @staticmethod
     def create_header_found(forward_position: CellPosition) -> LineResultStruct:
@@ -51,26 +54,37 @@ class LineResultStruct:
         """
         # instantiate an empty matching struct with no list -> use the name member to transport the forward index
         return LineResultStruct(LineResultType.HEADER_FOUND, CellMatchingStruct([]), CellPosition.create_invalid(),
-                                forward_position)
+                                forward_position, "")
 
     @staticmethod
     def create_data_found(match_result: CellMatchingStruct,
                           value_position: CellPosition,
-                          name_position: CellPosition) -> LineResultStruct:
+                          name_position: CellPosition,
+                          value_path: str = "") -> LineResultStruct:
         """
         Creates an instance which holds the position of the data found
 
         :param match_result: the struct holding the match information
         :param value_position: the position of the value in the table
         :param name_position: the position of the name in the table
+        :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
         :return: an instance representing an success in finding a value name pair in the given line
         """
-        return LineResultStruct(LineResultType.DATA_FOUND, match_result, value_position, name_position)
+        return LineResultStruct(LineResultType.DATA_FOUND, match_result, value_position, name_position, value_path)
 
-    def contains_forwarding(self) -> bool:
+    def header_contains_forwarding(self) -> bool:
         """
         Answers if the struct represents a header which holds a valid position for a header row or column
 
         :return: true if its an instance of a header which has forwarding information
         """
         return self.read_result == LineResultType.HEADER_FOUND and self.name_or_forward_position.is_valid()
+
+    def contains_forwarding_path(self) -> bool:
+        """
+        Returns if the value path is set or not. If so the value path and the name path should differ in the path
+        information given to the classifier
+
+        :return: true if the value has been set in case of forwarding else false
+        """
+        return bool(self.value_path)
