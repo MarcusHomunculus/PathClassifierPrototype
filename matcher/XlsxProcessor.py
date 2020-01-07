@@ -8,36 +8,14 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter
 
 from matcher.internal.enum.CellPropertyType import CellPropertyType
-from matcher.internal.data_struct.CellMatching import CellMatchResult, CellMatchingStruct
+from matcher.internal.data_struct.LineReading import LineResultStruct
+from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMatchResult
 from matcher.internal.data_struct.CellPosition import CellPosition
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
 
 class XlsxProcessor:
-
-    # class CellLineResult:
-    #     result: CellMatchingStruct
-    #     position_value: CellPosition
-    #     position_name: CellPosition
-    #
-    #     def __init__(self, result: CellMatchingStruct, position_value: CellPosition, position_name: CellPosition):
-    #         """
-    #         The constructor
-    #
-    #         :param result: the search result holding struct
-    #         :param position_value: the cell position of the value found (might be invalid depending on the result)
-    #         :param position_name: the cell position of the name found (might be invalid depending on the result)
-    #         """
-    #         self.result = result
-    #         self.position_value = position_value
-    #         self.position_name = position_name
-    #
-    #     def read_successful(self) -> bool:
-    #         """
-    #         Returns if a value-name-pair could be matched
-    #         """
-    #         return self.result == CellMatchResult.ALL_FOUND
 
     class PathDataCluster:
         value_id: str
@@ -60,6 +38,33 @@ class XlsxProcessor:
             self.value_property = value_property
             self.name_id = name_id
             self.name_property = name_property
+
+    class ForwardHelperCluster:
+        struct: CellMatchingStruct
+        value_position: CellPosition
+        final_path: str
+
+        def __init__(self, struct: CellMatchingStruct, value_position: CellPosition, path: str):
+            """
+            Creates an instance of a helper struct to bundle data from a forwarding attempt. The struct is should be the
+            same as the one received with the forwarding command and is explicitly returned to express the intention to
+            change it's state
+
+            :param struct: the potentially updated struct received
+            :param value_position: the position of the value found as cell coordinate
+            :param path: the path to the sheet where the value can be found
+            """
+            self.struct = struct
+            self.value_position = value_position
+            self.final_path = path
+
+        def to_tuple(self) -> Tuple[CellMatchingStruct, CellPosition, str]:
+            """
+            Allows to transform the cluster to a tuple for inline unpacking
+
+            :return: the structs members clustered as a tuple
+            """
+            return self.struct, self.value_position, self.final_path
 
     FORWARDING_KEY = "forwarding_on"
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
@@ -365,7 +370,7 @@ class XlsxProcessor:
             raise NoMatchCandidateException("Could not find a file under: " + file_path)
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
-            self._search_sheet_for_values(value_name_pairs, )
+            self._search_sheet_for_values(value_name_pairs, sheet)
 
     @staticmethod
     def __match_cell_properties_to(to_read: Cell, value_name_pairs: Iterator[Tuple[str, str]]) -> CellMatchStruct:
@@ -393,11 +398,51 @@ class XlsxProcessor:
         # means nothing has been found: return an invalid struct
         return XlsxProcessor.CellMatchStruct(False)
 
-    @staticmethod
-    def __scan_cell_line_for(value_name_pairs: Iterator[Tuple[str, str]],
+    def __scan_cell_line_for(self, value_name_pairs: Iterator[(str, str)],
                              to_scan: Iterator[Cell],
-                             forward_index: int = -1) -> CellLineResult:
-        pass
+                             header_color: str,
+                             forward_index: int,
+                             forward_name: str = "") -> LineResultStruct:
+        # TODO: doc me
+        current_idx = 0     # which results in starting the iteration with 1 which is the start for excel
+        value_path = ""
+        result_struct = CellMatchingStruct(value_name_pairs)
+        value_position = CellPosition.create_invalid()
+        name_position = CellPosition.create_invalid()
+        is_header = False
+        for cell in to_scan:
+            current_idx += 1
+            if cell.value is None:
+                # skip the empty cell
+                continue
+            if cell.fill.bgColor == header_color:
+                if cell.value == forward_name:
+                    # return immediately as only one forwarding index is expected
+                    # -> if multiple are required use a state machine
+                    return LineResultStruct.create_header_found(CellPosition.create_from(cell,
+                                                                                         CellPropertyType.CONTENT))
+                is_header = True
+                continue
+            # now the cell should contain some data -> find out if it is data of interest
+            if current_idx == forward_index:
+                result = self._follow_forward_to(cell.value, result_struct)
+                # write directly to value_position as the name shouldn't be found in the forwarding file
+                # -> this would beat the whole purpose of the forwarding
+                result_struct, value_position, value_path = result.to_tuple()
+            else:
+                cell_data = XlsxProcessor.__extract_cell_properties(cell)
+                for data in cell_data.keys():
+                    result = result_struct.test_value(data)
+                    if result == CellMatchResult.NAME_FOUND:
+                        name_position = CellPosition.create_from(cell, cell_data[data])
+                    elif result == CellMatchResult.VALUE_FOUND:
+                        value_position = CellPosition.create_from(cell, cell_data[data])
+            if name_position.is_valid() and value_position.is_valid():
+                # no reason to continue -> everything has been found
+                return LineResultStruct.create_data_found(result_struct, value_position, name_position, value_path)
+        if is_header:
+            return LineResultStruct.create_header_found(CellPosition.create_invalid())
+        return LineResultStruct.create_no_find()
 
     @staticmethod
     def __match_expected_in(to_read: Cell, previous_data: CellMatchStruct, return_rows: bool)\
@@ -471,3 +516,7 @@ class XlsxProcessor:
         else:
             template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_ROW_WISE
         return template.format(col, row, str(property_identifier))
+
+    def _follow_forward_to(self, file: str, testing_struct: CellMatchingStruct) -> ForwardHelperCluster:
+        # TODO: first check if the file even exists
+        pass
