@@ -5,10 +5,10 @@ import os
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, column_index_from_string
 
 from matcher.internal.enum.CellPropertyType import CellPropertyType
-from matcher.internal.data_struct.LineReading import LineResultStruct
+from matcher.internal.data_struct.LineReading import LineResultStruct, LineResultType
 from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMatchResult
 from matcher.internal.data_struct.CellPosition import CellPosition
 from classifier.BinClassifier import BinClassifier
@@ -108,7 +108,8 @@ class XlsxProcessor:
         for sheet in sheet_names:
             self._search_sheet_for_values(value_name_pairs, wb[sheet], self.__root_xlsx)
 
-    def _search_sheet_for_values(self, value_name_pairs: Iterator[Tuple[str, str]], sheet: Worksheet, path: str):
+    def _search_sheet_for_values(self, value_name_pairs: Iterator[Tuple[str, str]], sheet: Worksheet,
+                                 path: str) -> None:
         """
         Analyses the given sheet in the way that it tries to find the given value-URI-pairs in all constellations it
         knows by just applying all and throw the result at the classifier
@@ -121,7 +122,63 @@ class XlsxProcessor:
         self._check_column_wise(sheet, value_name_pairs, path)
         self._check_as_cross_table(sheet, value_name_pairs, path)
 
-    def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+    def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
+                        path: str) -> LineResultStruct:
+        """
+        Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
+        fashion. If a match could be made the resulting path is pushed into the classifier
+
+        :param sheet: the sheet to search for matches
+        :param value_name_pairs: the stuff (hopefully) to find in the sheet given
+        :param path: the path to the current sheet (excluding the sheet itself)
+        :return a LineResultStruct if only a value has been found: this is important for forwarded searches else an
+                invalid / empty struct
+        """
+        lowest_header_row: int = 0
+        forward_index = -1
+        handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
+        header_color = self.__config["header_{}".format(sheet.title)]
+        row_index = -1
+        for row in sheet.iter_rows():
+            row_index += 1
+            result = self.__scan_cell_line_for(row, value_name_pairs, forward_index, header_color,
+                                               "" if not handle_forwarding else forwarding_column_name)
+            if result.read_result == LineResultType.NO_FINDING:
+                continue
+            elif result.read_result == LineResultType.HEADER_FOUND:
+                lowest_header_row = row_index
+                if result.contains_header_forwarding_position():
+                    forward_index = column_index_from_string(result.name_or_forward_position.column)
+            # else data has been found
+            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND:
+                # only a value has been found -> forward the information to the caller -> but if no header has been
+                # found the orientation is probably bogus
+                if lowest_header_row > 0:
+                    return result
+                return LineResultStruct.create_no_find()
+            elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
+                # this case shouldn't exist in reality yet cover it to be on the safe side
+                continue
+            # else a pair has been detected -> collect all the required data and push the result into the classifier
+            row_data_start = lowest_header_row + 1
+            value_cell = self.__to_linear_cell_address(False, result.value_position.column, row_data_start,
+                                                       result.value_position.read_type)
+            current_sheet_path = "{}/{}".format(path, sheet.title)
+            value_path = current_sheet_path if not result.contains_value_forwarding_path() else result.value_path
+            final_path = "{}/@{};".format(value_path, value_cell)
+            name_cell = self.__to_linear_cell_address(False, result.name_or_forward_position.column, row_data_start,
+                                                      result.name_or_forward_position.read_type)
+            if result.contains_value_forwarding_path():
+                # prepend the current path to the name path to indicate that both differ
+                name_cell = "{}/@{}".format(current_sheet_path, name_cell)
+            else:
+                name_cell = "@{}".format(name_cell)
+            final_path += name_cell
+            self.__classifier.add_potential_match(final_path)
+        # if something was found it has been pushed to the classifier already -> so no need to return anything
+        return LineResultStruct.create_no_find()
+
+    def _check_row_wise_old(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
         """
         Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
         fashion. If a match could be made the resulting path is pushed into the classifier
@@ -456,10 +513,12 @@ class XlsxProcessor:
             if name_position.is_valid() and value_position.is_valid():
                 # no reason to continue -> everything has been found
                 return LineResultStruct.create_data_pair_found(result_struct, value_position, name_position)
-        if is_header:
-            return LineResultStruct.create_header_found(CellPosition.create_invalid())
+        # keep this separated as their separation ensures that header and data are detected in different lines
+        # -> prefer the value over the header as no detected header means no correctly detected table
         if value_position.is_valid():
             return LineResultStruct.create_value_found(result_struct, value_position, value_path)
+        if is_header:
+            return LineResultStruct.create_header_found(CellPosition.create_invalid())
         return LineResultStruct.create_no_find()
 
     @staticmethod
