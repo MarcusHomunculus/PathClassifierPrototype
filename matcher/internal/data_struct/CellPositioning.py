@@ -45,7 +45,7 @@ class CellPosition:
         :param cell_property: the property to get the content the instance is addressing
         :return: an instance of CellPosition
         """
-        return CellPosition(cell.row, cell.row, cell_property)
+        return CellPosition(cell.row, cell.column_letter, cell_property)
 
     @staticmethod
     def create_invalid() -> CellPosition:

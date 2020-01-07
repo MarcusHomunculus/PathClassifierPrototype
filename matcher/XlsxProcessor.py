@@ -139,7 +139,7 @@ class XlsxProcessor:
         forward_index = -1
         handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
         header_color = self.__config["header_{}".format(sheet.title)]
-        row_index = -1
+        row_index = 0   # start with zero to be conform with xlsx
         for row in sheet.iter_rows():
             row_index += 1
             result = self.__scan_cell_line_for(row, current_sheet_path, value_name_pairs, forward_index, header_color,
@@ -420,6 +420,15 @@ class XlsxProcessor:
         :param forward_name: set this value if a header field containing this value indicates forwarding
         :return: a situation dependent initialized instance of LineResultStruct
         """
+        def has_header_color(to_check: Cell) -> bool:
+            """
+            Checks if the given cell has a background color equal to the headers background color
+
+            :param to_check: the cell to check for coloring
+            :return: true if the colors match else false
+            """
+            return to_check.fill.bgColor.rgb == header_color or to_check.fill.fgColor.rgb == header_color
+
         if value_name_pairs is None:
             value_name_pairs = []
         current_idx = 0     # which results in starting the iteration with 1 which is the start for excel
@@ -433,7 +442,7 @@ class XlsxProcessor:
             if cell.value is None:
                 # skip the empty cell
                 continue
-            if cell.fill.bgColor == header_color:
+            if has_header_color(cell):
                 if cell.value == forward_name:
                     # return immediately as only one forwarding index is expected
                     # -> if multiple are required use a state machine
