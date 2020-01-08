@@ -32,6 +32,7 @@ class Creator:
     # constants
     WORKER_SHEET = "Workers"
     SECTION_SHEET = "Sections"
+    TEAM_SHEET_NAME = "Teams"
 
     class DataStruct:
         """
@@ -145,6 +146,8 @@ class Creator:
         # add an identifier which the path can use to symbolize forwarding 'cause it is not used as sheet or file name
         self.__config["path_forward_symbol"] = "&>"
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
+        # as all now use the same sheet title store the color only once
+        self.__config["header_{}".format(self.TEAM_SHEET_NAME)] = "FFFFFF66"
 
     def create_xml(self, file_name: str) -> None:
         """
@@ -165,6 +168,10 @@ class Creator:
 
         if not self._has_internal_data():
             raise InitializationException("Members seem not been initialized with data")
+        # the team node do not differ much in their attribute -> add an additional config parameter to tell the matcher
+        # which attribute it should resort to in nested cases
+        self.__config["general_id_attribute"] = "name"
+        # start building the tree
         root = ElemTree.Element("company")
         meta = ElemTree.SubElement(root, "general")
         name = ElemTree.SubElement(meta, "name")
@@ -428,7 +435,7 @@ class Creator:
             current = wb.active
             team_attr = "Teams"
             section_name = section.attributes["Name"]
-            current.title = section_name
+            current.title = self.TEAM_SHEET_NAME
             current.cell(row=start_row, column=start_column).value = "Maximal allowed team sizes in {}".format(
                 section_name)
             current_row = start_row + offset_row
@@ -442,7 +449,7 @@ class Creator:
                 team_dict[team] = head_count
                 if head_count > biggest_team:
                     biggest_team = head_count
-            header_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
+            header_fill = PatternFill(start_color='FFFFFF66', fill_type='solid')
             border = Border(right=Side(style='thin'), bottom=Side(style='thin'), left=Side(style='thin'),
                             top=Side(style='thin'))
             for i in range(biggest_team):
