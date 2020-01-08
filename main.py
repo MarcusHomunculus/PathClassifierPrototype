@@ -26,6 +26,7 @@ def generate_json(worker_count: int) -> None:
 
 if __name__ == "__main__":
     default_xlsx_path = "data.xlsx"
+    default_nested_dir = "sections"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
     shall_generate_base = "n"
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     shall_generate_mock = "n"
     if shall_generate_mock == "y" or shall_generate_mock == "Y":
         c = Creator.Creator(path_to_workers=workerFile, path_to_sections=sectionFile)
-        c.create_xlsx(".", default_xlsx_path, "sections")
+        c.create_xlsx(".", default_xlsx_path, default_nested_dir)
         c.create_xml("ref.xml")
         c.create_config_file("config.toml")
     elif shall_generate_mock == "n" or shall_generate_mock == "N":
@@ -59,6 +60,6 @@ if __name__ == "__main__":
     # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
     # m.test_table_reading()
     manager = MatchingManager("config.toml")
-    manager.train("ref.xml", default_xlsx_path, "nested/")
+    manager.train("ref.xml", default_xlsx_path, "{}/".format(default_nested_dir))
 
     print("Done!")
