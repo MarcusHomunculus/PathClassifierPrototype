@@ -66,7 +66,7 @@ class XlsxProcessor:
             return self.struct, self.value_position, self.final_path
 
     FORWARDING_KEY = "forwarding_on"
-    FORWARDING_PATH_SYMBOL = "&>"
+    FORWARDING_PATH_KEY = "path_forward_symbol"
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
     TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
 
@@ -374,7 +374,7 @@ class XlsxProcessor:
         file_path = self.__nested_xlsx_dir + file_name
         if not os.path.exists(file_path):
             raise NoMatchCandidateException("Could not find {} file under: {}".format(file_name, file_path))
-        path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_SYMBOL])
+        path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_KEY])
         # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
         # be stupid
         value_name_pairs = [(testing_struct.get_missing_entry(), "")]
