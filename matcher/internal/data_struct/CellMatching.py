@@ -24,6 +24,8 @@ class CellMatchingStruct:
         self.success_type = CellMatchResult.NO_FINDING
         self.__expected = ""
         self.__pool = list(value_name_pairs)
+        if len(self.__pool) < 1:
+            raise AttributeError("Can't be initialized with an empty list")
 
     def test_value(self, value: str) -> CellMatchResult:
         """
@@ -48,6 +50,7 @@ class CellMatchingStruct:
                 self.success_type = CellMatchResult.ALL_FOUND
                 return self.success_type
             return CellMatchResult.NO_FINDING
+        return CellMatchResult.NO_FINDING
 
     def get_value_name_pairs(self) -> List[Tuple[str, str]]:
         """
