@@ -63,12 +63,8 @@ class CellPositionStruct:
     name_or_forward_position: CellPosition
     value_path: str
 
-    def __init__(self,
-                 read_result: CellPositionStructType,
-                 data_result: CellMatchingStruct,
-                 value_position: CellPosition,
-                 name_position: CellPosition,
-                 value_path: str):
+    def __init__(self, read_result: CellPositionStructType, data_result: CellMatchingStruct,
+                 value_position: CellPosition, name_position: CellPosition, value_path: str):
         """
         The constructor which is discouraged to be used outside of the static factory methods
         """
@@ -102,8 +98,7 @@ class CellPositionStruct:
                                   CellPosition.create_invalid(), forward_position, "")
 
     @staticmethod
-    def create_data_pair_found(match_result: CellMatchingStruct,
-                               value_position: CellPosition,
+    def create_data_pair_found(match_result: CellMatchingStruct, value_position: CellPosition,
                                name_position: CellPosition) -> CellPositionStruct:
         """
         Creates an instance which holds the position of the data found
@@ -116,8 +111,7 @@ class CellPositionStruct:
         return CellPositionStruct(CellPositionStructType.DATA_FOUND, match_result, value_position, name_position, "")
 
     @staticmethod
-    def create_value_found(match_result: CellMatchingStruct,
-                           value_position: CellPosition,
+    def create_value_found(match_result: CellMatchingStruct, value_position: CellPosition,
                            value_path: str) -> CellPositionStruct:
         """
         Creates an instance which holds the state when only a value has been found

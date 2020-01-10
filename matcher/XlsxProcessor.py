@@ -104,23 +104,10 @@ class XlsxProcessor:
         :param value_name_pairs: a list of tuples with values and their corresponding URI
         """
         wb = load_workbook(self.__root_xlsx)
-        sheet_names = wb.sheetnames
-        for sheet in sheet_names:
-            self._search_sheet_for_values(value_name_pairs, wb[sheet], self.__root_xlsx)
-
-    def _search_sheet_for_values(self, value_name_pairs: Iterator[Tuple[str, str]], sheet: Worksheet,
-                                 path: str) -> None:
-        """
-        Analyses the given sheet in the way that it tries to find the given value-URI-pairs in all constellations it
-        knows by just applying all and throw the result at the classifier
-
-        :param value_name_pairs: a list of tuples with values and their corresponding URI
-        :param sheet: the sheet to go through
-        :param path: the current path to the sheet (for the classifier)
-        """
-        self._check_row_wise(sheet, value_name_pairs, path)
-        self._check_column_wise(sheet, value_name_pairs, path)
-        self._check_as_cross_table(sheet, value_name_pairs, path)
+        for sheet in wb.sheetnames:
+            self._check_row_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
+            self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
+            self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
                         path: str) -> CellPositionStruct:
@@ -138,7 +125,10 @@ class XlsxProcessor:
         lowest_header_row: int = 0
         forward_index = -1
         handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
-        header_color = self.__config["header_{}".format(sheet.title)]
+        color_key = "header_{}".format(sheet.title)
+        if color_key not in self.__config:
+            raise AssertionError("Missing key '{}' for retrieving the header color".format(color_key))
+        header_color = self.__config[color_key]
         row_index = 0   # start with zero to be conform with xlsx
         for row in sheet.iter_rows():
             row_index += 1
@@ -381,10 +371,10 @@ class XlsxProcessor:
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
             # return the first value found
-            result_row = self._check_row_wise(sheet, value_name_pairs, path)
+            result_row = self._check_row_wise(wb[sheet], value_name_pairs, path)
             if result_row.contains_value_forwarding_path():
                 return result_row
-            result_col = self._check_column_wise(sheet, value_name_pairs, path)
+            result_col = self._check_column_wise(wb[sheet], value_name_pairs, path)
             if result_col.contains_value_forwarding_path():
                 return result_col
         return CellPositionStruct.create_no_find()
