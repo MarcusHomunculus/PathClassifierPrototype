@@ -29,7 +29,7 @@ if __name__ == "__main__":
     default_nested_dir = "sections"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
-    shall_generate_base = "n"
+    shall_generate_base = "y"
     if shall_generate_base == "y" or shall_generate_base == "Y":
         # means to generate the json files from stock
         # worker_cnt = int(input("How many workers should be generated?"))
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     print("Step two: Generating mock data from JSON")
     # shall_generate_mock = input("Shall I use the existing data to generate mocking data? (y/n)")
-    shall_generate_mock = "n"
+    shall_generate_mock = "y"
     if shall_generate_mock == "y" or shall_generate_mock == "Y":
         c = Creator.Creator(path_to_workers=workerFile, path_to_sections=sectionFile)
         c.create_xlsx(".", default_xlsx_path, default_nested_dir)
