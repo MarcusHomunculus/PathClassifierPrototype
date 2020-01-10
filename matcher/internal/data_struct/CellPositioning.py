@@ -85,8 +85,8 @@ class CellPositionStruct:
 
         :return an instance representing nothing
         """
-        return CellPositionStruct(CellPositionStructType.NO_FINDING, CellMatchingStruct([]), CellPosition.create_invalid(),
-                                  CellPosition.create_invalid(), "")
+        return CellPositionStruct(CellPositionStructType.NO_FINDING, CellMatchingStruct([], True),
+                                  CellPosition.create_invalid(), CellPosition.create_invalid(), "")
 
     @staticmethod
     def create_header_found(forward_position: CellPosition) -> CellPositionStruct:
@@ -98,8 +98,8 @@ class CellPositionStruct:
         :return: an instance representing a header (which in itself) is only of importance for were to start reading
         """
         # instantiate an empty matching struct with no list -> use the name member to transport the forward index
-        return CellPositionStruct(CellPositionStructType.HEADER_FOUND, CellMatchingStruct([]), CellPosition.create_invalid(),
-                                  forward_position, "")
+        return CellPositionStruct(CellPositionStructType.HEADER_FOUND, CellMatchingStruct([], True),
+                                  CellPosition.create_invalid(), forward_position, "")
 
     @staticmethod
     def create_data_pair_found(match_result: CellMatchingStruct,
@@ -127,8 +127,8 @@ class CellPositionStruct:
         :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
         :return: an instance representing in success finding a value but not more
         """
-        return CellPositionStruct(CellPositionStructType.DATA_FOUND, match_result, value_position, CellPosition.create_invalid(),
-                                  value_path)
+        return CellPositionStruct(CellPositionStructType.DATA_FOUND, match_result, value_position,
+                                  CellPosition.create_invalid(), value_path)
 
     def contains_header_forwarding_position(self) -> bool:
         """

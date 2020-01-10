@@ -15,15 +15,18 @@ class CellMatchingStruct:
     __expected: str
     __pool: List[Tuple[str, str]]
 
-    def __init__(self, value_name_pairs: Iterator[Tuple[str, str]]):
+    def __init__(self, value_name_pairs: Iterator[Tuple[str, str]], skip_validation: bool = False):
         """
         The constructor
 
         :param value_name_pairs: A list of values pairs with there root node name
+        :param skip_validation: set this flag if the test for the constructors data shall be disabled
         """
         self.success_type = CellMatchResult.NO_FINDING
         self.__expected = ""
         self.__pool = list(value_name_pairs)
+        if skip_validation:
+            return
         if len(self.__pool) < 1:
             raise AttributeError("Can't be initialized with an empty list")
 

@@ -31,6 +31,8 @@ class XmlProcessor:
         # -> switch to a generator in a "proper" implementation
         try:
             current: Tuple[str, List[(str, str)]] = self.__targets.pop()
+            if not len(current[1]):
+                raise AssertionError("Should not register path '{}' without any value-name pairs".format(current[0]))
             self.__classifier.add_source_path(current[0])
             return current[1]
         except IndexError:
@@ -100,6 +102,8 @@ class XmlProcessor:
 
         # get an overview about the targets to find
         identifier_list = list(map(lambda x: x.text, parent_node.findall(".//{}".format(self._get_universal_id()))))
+        if len(identifier_list) < 1:
+            raise AssertionError("No name extracted! Maybe wrong URI value in config file: " + self._get_universal_id())
         # use the first node as blue-print
         process_node(parent_node[0], "{}/{}".format(parent_node.tag, parent_node[0].tag), identifier_list)
 
@@ -122,6 +126,8 @@ class XmlProcessor:
         if result is None:
             # means a node has to be processed
             nodes = root_node.findall(".{}".format(node_path))
+            if len(nodes) < 1:
+                raise AssertionError("Path '.{} yielded no results".format(node_path))
             for node in nodes:
                 values.append(node.text)
         else:
@@ -129,6 +135,8 @@ class XmlProcessor:
             attribute_name = result.group(0)
             node_path = node_path[:-(len(attribute_name) + 2)]     # -1 for the "@" and -1 for the "/" before it
             nodes = root_node.findall(".{}".format(node_path))
+            if len(nodes) < 1:
+                raise AssertionError("Path '.{} yielded no results".format(node_path))
             for node in nodes:
                 values.append(node.attrib[attribute_name])
         return values
