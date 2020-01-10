@@ -24,6 +24,15 @@ class BinClassifier:
         self.__mat.append(BinCollection(source))
         self.__last_source = source
 
+    def get_active_source_path(self):
+        """
+        Returns the path under which current matches would be added with add_potential_match() if no source path would
+        be given
+
+        :return: the active source file path
+        """
+        return self.__last_source
+
     def add_potential_match(self, match_path: str, source_path: str = "") -> None:
         """
         Allows to add a new sink path to an either already added source path or the source path specified

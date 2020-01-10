@@ -11,7 +11,7 @@ from matcher.internal.enum.CellPropertyType import CellPropertyType
 from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMatchResult
 from matcher.internal.data_struct.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
 from classifier.BinClassifier import BinClassifier
-from classifier.error.MatchExceptions import NoMatchCandidateException
+from classifier.error.MatchExceptions import ForwardFileNotFound
 
 
 class XlsxProcessor:
@@ -361,9 +361,12 @@ class XlsxProcessor:
         :param testing_struct: the struct which can be used to find the value
         :return: A CellPositionStruct of "type" value_found or no_find
         """
+        if testing_struct.success_type == CellMatchResult.NO_FINDING:
+            # it makes no sense to look in another file without a previously found name
+            return CellPositionStruct.create_no_find()
         file_path = self.__nested_xlsx_dir + file_name
         if not os.path.exists(file_path):
-            raise NoMatchCandidateException("Could not find {} file under: {}".format(file_name, file_path))
+            raise ForwardFileNotFound("Could not find {} file under: {}".format(file_name, file_path))
         path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_KEY])
         # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
         # be stupid
