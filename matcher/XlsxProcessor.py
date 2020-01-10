@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Iterator, Dict
+from typing import List, Tuple, Iterator, Dict, Any, Union
 import re
 import os
 from openpyxl import load_workbook
@@ -12,6 +12,7 @@ from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMa
 from matcher.internal.data_struct.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import ForwardFileNotFound
+from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
 class XlsxProcessor:
@@ -97,7 +98,7 @@ class XlsxProcessor:
             nested_xlsx_dir += "/"
         self.__nested_xlsx_dir = root_path + nested_xlsx_dir
 
-    def match_given_values_in(self, value_name_pairs: Iterator[Tuple[str, str]]) -> None:
+    def match_given_values_in(self, value_name_pairs: Iterator[ValueNamePair]) -> None:
         """
         Manages itself through the given xlsx-file and and tries to match the given pairs in the files (somewhere)
 
@@ -109,7 +110,7 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
-    def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
+    def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
                         path: str) -> CellPositionStruct:
         """
         Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
@@ -169,7 +170,7 @@ class XlsxProcessor:
         # if something was found it has been pushed to the classifier already -> so no need to return anything
         return CellPositionStruct.create_no_find()
 
-    def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]],
+    def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
                            path: str) -> CellPositionStruct:
         """
         Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
@@ -224,7 +225,7 @@ class XlsxProcessor:
         # if something was found it has been pushed to the classifier already -> so no need to return anything
         return CellPositionStruct.create_no_find()
 
-    def _check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[Tuple[str, str]], path: str) -> None:
+    def _check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair], path: str) -> None:
         """
         Iterates through the sheet and tries to determine if the sheet could contain a cross table where names and
         values are distributed along a column and a row and their matching is indicated by a 'X' in the field below
@@ -304,9 +305,7 @@ class XlsxProcessor:
                         return cell.column
                     return cell.row
 
-        intermediate_value_name_separation = zip(*value_name_pairs)
-        values = next(intermediate_value_name_separation)
-        names = next(intermediate_value_name_separation)
+        values, names = ValueNamePair.unzip(value_name_pairs)
         for col_iter in sheet.iter_cols():
             col = list(col_iter)    # transform it so we can search through it multiple times
             success_names, name_index = check_line_for_list_entries(col, names)
@@ -368,16 +367,18 @@ class XlsxProcessor:
         if not os.path.exists(file_path):
             raise ForwardFileNotFound("Could not find {} file under: {}".format(file_name, file_path))
         path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_KEY])
+        if self.__classifier.get_active_source_path() == "sections/section/teams/team":
+            hello = "world"
         # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
         # be stupid
-        value_name_pairs = [(testing_struct.get_missing_entry(), "")]
+        value_pair: Iterator[ValueNamePair] = [ValueNamePair.create_with_value(testing_struct.get_missing_entry())]
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
             # return the first value found
-            result_row = self._check_row_wise(wb[sheet], value_name_pairs, path)
+            result_row = self._check_row_wise(wb[sheet], value_pair, path)
             if result_row.contains_value_forwarding_path():
                 return result_row
-            result_col = self._check_column_wise(wb[sheet], value_name_pairs, path)
+            result_col = self._check_column_wise(wb[sheet], value_pair, path)
             if result_col.contains_value_forwarding_path():
                 return result_col
         return CellPositionStruct.create_no_find()
@@ -399,7 +400,7 @@ class XlsxProcessor:
         return True, names[1]
 
     def __scan_cell_line_for(self, to_scan: Iterator[Cell], current_path: str,
-                             value_name_pairs: Iterator[(str, str)] = None, forward_index: int = -1,
+                             value_name_pairs: Iterator[ValueNamePair] = None, forward_index: int = -1,
                              header_color: str = "", forward_name: str = "") -> CellPositionStruct:
         """
         Goes through the iteration of cells and checks if it can find useful information in it. The result is returned

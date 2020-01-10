@@ -1,5 +1,7 @@
 from enum import IntEnum
-from typing import List, Tuple, Iterator
+from typing import List, Iterator
+
+from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
 class CellMatchResult(IntEnum):
@@ -13,9 +15,9 @@ class CellMatchResult(IntEnum):
 class CellMatchingStruct:
     success_type: CellMatchResult
     __expected: str
-    __pool: List[Tuple[str, str]]
+    __pool: List[ValueNamePair]
 
-    def __init__(self, value_name_pairs: Iterator[Tuple[str, str]], skip_validation: bool = False):
+    def __init__(self, value_name_pairs: Iterator[ValueNamePair], skip_validation: bool = False):
         """
         The constructor
 
@@ -40,22 +42,25 @@ class CellMatchingStruct:
         if self.success_type is CellMatchResult.NO_FINDING:
             for entry in self.__pool:
                 to_return = CellMatchResult.NO_FINDING
-                if entry[0] == value:
-                    self.__expected = entry[1]
+                # check if the value is **in** the value rather then for equality for higher flexibility
+                # -> if types can be distinguished (by extracting them from eg. the XML-Schema) it would make more sense
+                # to check numerical values vor equality or double values for a certain count of digits
+                if entry.value in value:
+                    self.__expected = entry.value
                     to_return = self.success_type = CellMatchResult.VALUE_FOUND
-                elif entry[1] == value:
-                    self.__expected = entry[0]
+                elif entry.name in value:
+                    self.__expected = entry.name
                     to_return = self.success_type = CellMatchResult.NAME_FOUND
                 return to_return
         if self.success_type.value > 1:
             # means either the value or the name is missing
-            if self.__expected == value:
+            if self.__expected in value:
                 self.success_type = CellMatchResult.ALL_FOUND
                 return self.success_type
             return CellMatchResult.NO_FINDING
         return CellMatchResult.NO_FINDING
 
-    def get_value_name_pairs(self) -> List[Tuple[str, str]]:
+    def get_value_name_pairs(self) -> List[ValueNamePair]:
         """
         Returns a copy of the stored value-name pairs
 

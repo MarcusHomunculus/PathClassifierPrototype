@@ -4,13 +4,14 @@ import re
 import xml.etree.ElementTree as ElemTree
 
 from classifier.BinClassifier import BinClassifier
+from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
 class XmlProcessor:
 
     __classifier: BinClassifier
     __config: Dict[str, str]
-    __targets: List[(str, List[(str, str)])]
+    __targets: List[(str, List[ValueNamePair])]
 
     def __init__(self, sink: BinClassifier, config: Dict[str, str]):
         """
@@ -26,7 +27,7 @@ class XmlProcessor:
     def __iter__(self) -> XmlProcessor:
         return self
 
-    def __next__(self) -> List[(str, str)]:
+    def __next__(self) -> List[ValueNamePair]:
         # use a stack scheme as order is not relevant for the matching
         # -> switch to a generator in a "proper" implementation
         try:
@@ -75,8 +76,7 @@ class XmlProcessor:
                 new_path = current_path + "/@{}".format(key)
                 # self.__classifier.add_source_path(new_path)
                 values = self._path_to_xml_values(new_path, parent_node)
-                pairs = zip(values, ids)    # hope that it fails in case both lists are not equal in length
-                self.__targets.append((new_path, list(pairs)))
+                self.__targets.append((new_path, ValueNamePair.zip(values, ids)))
 
         def process_node(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
             """
@@ -89,8 +89,7 @@ class XmlProcessor:
             """
             if not node.text.isspace():
                 values = self._path_to_xml_values(current_path, parent_node)
-                pairs = zip(values, ids)
-                self.__targets.append((current_path, list(pairs)))
+                self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
             if node.attrib:
                 process_attributes(node, current_path, ids)
             for child_node in node:
