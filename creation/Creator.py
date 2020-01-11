@@ -466,7 +466,8 @@ class Creator:
                                                                        col_2=get_column_letter(current_column +
                                                                                                team_dict[team] - 1)))
                 active = current.cell(row=current_row, column=current_column)
-                active.value = "{0} : {1}".format(team, team_dict[team])
+                # active.value = "{0} : {1}".format(team, team_dict[team])
+                active.value = "{0}".format(team)
                 active.fill = team_fill
                 active.border = border
                 current_row += 1
