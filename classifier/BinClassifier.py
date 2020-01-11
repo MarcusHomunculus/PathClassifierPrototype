@@ -58,3 +58,6 @@ class BinClassifier:
                 raise MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
                     path_bin.get_key()))
             self.__result_buffer[path] = path_bin.get_key()
+
+    def dump_as_html(self, target_path: str) -> None:
+        pass
