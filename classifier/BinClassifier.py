@@ -60,4 +60,15 @@ class BinClassifier:
             self.__result_buffer[path] = path_bin.get_key()
 
     def dump_as_html(self, target_path: str) -> None:
-        pass
+        # TODO: write some nice docu here
+        def get_table_template() -> str:
+            # TODO: doc me
+            with open("classifier/templates/match_table.html", "r") as template_file:
+                return template_file.read()
+        content = get_table_template()
+        # write to file
+        if not target_path.endswith(".html"):
+            target_path += ".html"
+        print("Dumping classifier matrix as HTML into " + target_path)
+        with open(target_path, "w+") as sink_file:
+            sink_file.write(content)

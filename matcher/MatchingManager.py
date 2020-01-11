@@ -56,3 +56,6 @@ class MatchingManager:
             config.update(toml.load(c))
         return config
 
+    def dump_classifier_matrix(self, file: str) -> None:
+        # TODO: write some expressive docu here
+        self.__classifier.dump_as_html(file)
