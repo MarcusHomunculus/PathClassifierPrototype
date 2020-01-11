@@ -46,10 +46,10 @@ class CellMatchingStruct:
                 # -> if types can be distinguished (by extracting them from eg. the XML-Schema) it would make more sense
                 # to check numerical values vor equality or double values for a certain count of digits
                 if entry.value in value:
-                    self.__expected = entry.value
+                    self.__expected = entry.name
                     to_return = self.success_type = CellMatchResult.VALUE_FOUND
                 elif entry.name in value:
-                    self.__expected = entry.name
+                    self.__expected = entry.value
                     to_return = self.success_type = CellMatchResult.NAME_FOUND
                 return to_return
         if self.success_type.value > 1:
