@@ -73,3 +73,11 @@ class BinCollection:
         :return: the path of the source value
         """
         return self.__source_path
+
+    def get_potential_paths(self) -> List[str]:
+        """
+        Returns all the path registered from the sink file
+
+        :return: a list of path which were associated with the source path
+        """
+        return list(self.__matched_paths)

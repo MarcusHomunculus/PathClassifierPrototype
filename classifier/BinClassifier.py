@@ -1,4 +1,6 @@
 from typing import List, Dict
+import html
+
 from classifier.internal.BinCollection import BinCollection
 from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
 
@@ -61,11 +63,25 @@ class BinClassifier:
 
     def dump_as_html(self, target_path: str) -> None:
         # TODO: write some nice docu here
-        def get_table_template() -> str:
+        def get_template(name: str) -> str:
             # TODO: doc me
-            with open("classifier/templates/match_table.html", "r") as template_file:
+            with open("classifier/templates/{}.htm".format(name), "r") as template_file:
                 return template_file.read()
-        content = get_table_template()
+        # retrieve a list of all paths registered from the sink file
+        sink_path_set = set()
+        for line in self.__mat:
+            sink_path_set.update(line.get_potential_paths())
+        # transform it to a list to ensure order
+        sink_paths = list(sink_path_set)
+        content = get_template("match_table")
+        # creating the table header
+        header_template = get_template("table_head")
+        head_string = ""
+        for sink_path in sink_paths:
+            head_string += header_template.replace("[%PATH%]", html.escape(sink_path)) + "\n"
+        # insert the table head
+        content = content.replace("[%SINK_PATHS%]", head_string, 1)
+        column_count = len(sink_paths) + 1      # +1 for the source path to the left
         # write to file
         if not target_path.endswith(".html"):
             target_path += ".html"
