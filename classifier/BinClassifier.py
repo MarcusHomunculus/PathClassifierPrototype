@@ -1,5 +1,4 @@
-from typing import List, Dict
-import html
+from typing import List, Dict, Tuple
 
 from classifier.internal.BinCollection import BinCollection
 from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
@@ -61,30 +60,11 @@ class BinClassifier:
                     path_bin.get_key()))
             self.__result_buffer[path] = path_bin.get_key()
 
-    def dump_as_html(self, target_path: str) -> None:
-        # TODO: write some nice docu here
-        def get_template(name: str) -> str:
-            # TODO: doc me
-            with open("classifier/templates/{}.htm".format(name), "r") as template_file:
-                return template_file.read()
-        # retrieve a list of all paths registered from the sink file
-        sink_path_set = set()
-        for line in self.__mat:
-            sink_path_set.update(line.get_potential_paths())
-        # transform it to a list to ensure order
-        sink_paths = list(sink_path_set)
-        content = get_template("match_table")
-        # creating the table header
-        header_template = get_template("table_head")
-        head_string = ""
-        for sink_path in sink_paths:
-            head_string += header_template.replace("[%PATH%]", html.escape(sink_path)) + "\n"
-        # insert the table head
-        content = content.replace("[%SINK_PATHS%]", head_string, 1)
-        column_count = len(sink_paths) + 1      # +1 for the source path to the left
-        # write to file
-        if not target_path.endswith(".html"):
-            target_path += ".html"
-        print("Dumping classifier matrix as HTML into " + target_path)
-        with open(target_path, "w+") as sink_file:
-            sink_file.write(content)
+    def dump_raw_data(self) -> List[Tuple[str, List[Tuple[str, int]]]]:
+        """
+        Dumps the classifiers matrix as a list of rows
+
+        :return: a list of tuples containing a string and a list of string-integer-pairs
+        """
+        tuple_list = map(lambda x: x.to_tuple(), self.__mat)
+        return list(tuple_list)

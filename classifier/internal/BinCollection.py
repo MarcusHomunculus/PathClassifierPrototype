@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
@@ -10,7 +10,11 @@ class BinCollection:
     __match_bins: List[int]
 
     def __init__(self, key: str):
-        # TODO: doc me
+        """
+        The constructor
+
+        :param key: the source path the instance represents and the sink file path should be collected for
+        """
         self.__source_path = key
         self.__matched_paths = []
         self.__match_bins = []
@@ -74,10 +78,31 @@ class BinCollection:
         """
         return self.__source_path
 
-    def get_potential_paths(self) -> List[str]:
-        """
-        Returns all the path registered from the sink file
+    # def get_potential_paths(self) -> List[str]:
+    #     """
+    #     Returns all the path registered from the sink file
+    #
+    #     :return: a list of path which were associated with the source path
+    #     """
+    #     return list(self.__matched_paths)
+    #
+    # def get_bins(self) -> List[int]:
+    #     """
+    #     Returns the bins for the match count
+    #
+    #     :return: a list of integers which indicate how often the bin was incremented
+    #     """
+    #     return list(self.__match_bins)
 
-        :return: a list of path which were associated with the source path
+    def to_tuple(self) -> Tuple[str, List[Tuple[str, int]]]:
         """
-        return list(self.__matched_paths)
+        Flattens the collection to a tuple with the source path and a list of tuples with the sink file paths and their
+        count
+
+        :return: a tuple of a string and a list of string-integer-tuples
+        """
+        if len(self.__match_bins) != len(self.__matched_paths):
+            raise AssertionError("Having different length for paths and bins: {} vs {}".format(
+                len(self.__matched_paths), len(self.__match_bins)))
+        bin_data: List[Tuple[str, int]] = list(zip(self.__matched_paths, self.__match_bins))
+        return self.get_key(), bin_data
