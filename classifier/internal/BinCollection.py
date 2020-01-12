@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import logging
 
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
@@ -58,8 +59,8 @@ class BinCollection:
         max_val = -1
         max_idx = 0
         if not self.__match_bins:
-            raise NoMatchCandidateException("Could not match path '{}' to any path in the sink file".format(
-                self.get_key()))
+            logging.warning(NoMatchCandidateException("Could not match path '{}' to any path in the sink file".format(
+                self.get_key())))
         for i in range(len(self.__match_bins)):
             if self.__match_bins[i] > max_val:
                 max_val = self.__match_bins[i]

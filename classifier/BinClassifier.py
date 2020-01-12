@@ -1,4 +1,5 @@
 from typing import List, Dict, Tuple
+import logging
 
 from classifier.internal.BinCollection import BinCollection
 from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
@@ -67,8 +68,8 @@ class BinClassifier:
         for path_bin in self.__mat:
             path, success = path_bin.get_highest_match()
             if not success:
-                raise MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
-                    path_bin.get_key()))
+                logging.warning(MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
+                    path_bin.get_key())))
             self.__result_buffer[path] = path_bin.get_key()
 
     def dump_raw_data(self) -> List[Tuple[str, List[Tuple[str, int]]]]:

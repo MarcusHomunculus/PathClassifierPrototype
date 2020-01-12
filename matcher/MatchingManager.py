@@ -1,5 +1,6 @@
 from typing import Dict
 import toml
+import logging
 
 from matcher.XlsxProcessor import XlsxProcessor
 from matcher.XmlProcessor import XmlProcessor
@@ -14,9 +15,11 @@ class MatchingManager:
     __config: Dict[str, str]
     __classifier: BinClassifier
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, log_file: str = "matching.log"):
         self.__classifier = BinClassifier()
         self.__config = self.__read_config(config_path)
+        # configure logging
+        logging.basicConfig(filename=log_file, level=logging.WARNING)
 
     def train(self, source_path: str, sink_path: str, nested_sink_dir: str = ""):
         self.__xml_handler = XmlProcessor(self.__classifier, self.__config)
@@ -25,24 +28,6 @@ class MatchingManager:
             self.__xlsx_handler.match_given_values_in(pair_list)
         # digest the whole pile of data
         self.__classifier.train()
-
-    @staticmethod
-    def __mock_test_data():
-        value_name_pairs = [
-            ("warehouseman", "pedantic jackson"),
-            ("engineer", "nostalgic curie"),
-            ("electrician", "trusting stonebraker")
-        ]
-        return value_name_pairs
-
-    @staticmethod
-    def __mock_test_cross_data():
-        value_name_pairs = [
-            ("pedantic jackson", "Logistics"),
-            ("nostalgic curie", "Research and Development"),
-            ("trusting stonebraker", "Production")
-        ]
-        return value_name_pairs
 
     @staticmethod
     def __read_config(path_to_file: str) -> Dict[str, str]:
