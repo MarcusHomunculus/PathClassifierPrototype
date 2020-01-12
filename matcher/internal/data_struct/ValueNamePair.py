@@ -27,7 +27,7 @@ class ValueNamePair:
         :param value: the value to find
         :return: an instance of ValueNamePair with an empty name and the given value
         """
-        return ValueNamePair("", value)
+        return ValueNamePair(value, "")
 
     @staticmethod
     def from_tuple(value_name_pair: Tuple[str, str]) -> ValueNamePair:

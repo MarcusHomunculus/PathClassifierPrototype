@@ -5,7 +5,6 @@ from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
 class CellMatchResult(IntEnum):
-    # please keep in mind that this enum is interpreted via a bitmask
     NO_FINDING = 0
     ALL_FOUND = 1
     NAME_FOUND = 2
@@ -56,8 +55,11 @@ class CellMatchingStruct:
         if self.success_type.value > 1:
             # means either the value or the name is missing
             if self.__expected in value:
+                last_state = self.success_type
                 self.success_type = CellMatchResult.ALL_FOUND
-                return self.success_type
+                if last_state == last_state == CellMatchResult.NAME_FOUND:
+                    return CellMatchResult.VALUE_FOUND
+                return CellMatchResult.NAME_FOUND
             return CellMatchResult.NO_FINDING
         return CellMatchResult.NO_FINDING
 
