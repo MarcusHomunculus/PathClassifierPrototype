@@ -10,6 +10,9 @@ class BinClassifier:
     __result_buffer: Dict[str, str]
 
     def __init__(self):
+        """
+        The constructor
+        """
         self.__mat = []
         self.__last_source = ""
         self.__result_buffer = {}
@@ -21,6 +24,14 @@ class BinClassifier:
 
         :param source: the path to the data in the source file
         """
+        # first check if the path already exists -> this is a real scenario for the team-nodes in the sections: it makes
+        # more sense to just add these to the existing data rather then skipping them in the reading process as in the
+        # best case they reassure the data
+        for collection in self.__mat:
+            if collection.get_key() == source:
+                self.__last_source = source
+                return
+        # else it is a new path
         self.__mat.append(BinCollection(source))
         self.__last_source = source
 
