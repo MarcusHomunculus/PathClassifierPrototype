@@ -1,0 +1,38 @@
+h1 {
+    color: red;
+}
+
+table {
+    border-collapse: collapse;
+    text-align: center;
+    table-layout: fixed;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid black;
+}
+
+.sink_path {
+    text-align: center;
+    white-space: nowrap;
+    transform-origin: 50% 50%;
+    /* -webkit-transform: rotate(90deg);
+    -moz-transform: rotate(90deg);
+    -ms-transform: rotate(90deg);
+    -o-transform: rotate(90deg); */
+    transform: rotate(270deg);
+}
+
+.sink_path p {
+    margin: 0 -100%;
+    display: inline-block;
+}
+
+.sink_path p:before {
+    content: '';
+    width: 0;
+    padding-top: 100%;
+    display: inline-block;
+    vertical-align: middle;
+}

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Set
 import html
 
 class HtmlWriter:
@@ -17,12 +17,13 @@ class HtmlWriter:
         # TODO: write some nice docu here
         def get_template(name: str) -> str:
             # TODO: doc me
-            with open("classifier/templates/{}.htm".format(name), "r") as template_file:
+            with open("matcher/internal/templates/{}.htm".format(name), "r") as template_file:
                 return template_file.read()
         # retrieve a list of all paths registered from the sink file
-        sink_path_set = set()
+        sink_path_set: Set[str] = set()
         for line in self._raw_data:
-            sink_path_set.update(line[1][0])
+            for pair in line[1]:
+                sink_path_set.add(pair[0])
         # transform it to a list to ensure order
         sink_path_pool = list(sink_path_set)
         content = get_template("match_table")
@@ -38,10 +39,12 @@ class HtmlWriter:
         cell_template = get_template("match_cell")
         table_body = ""
         for row in self._raw_data:
-            current_row = row_template.replace("[%SOURCE_PATH%]", row[0])
+            source_path = row[0]
+            current_row = row_template.replace("[%SOURCE_PATH%]", source_path)
             matrix_row_str = ""
-            for bin_count in row.get_bins():
-                matrix_row_str += cell_template.replace("[%COUNT%]", str(bin_count)) + "\n"
+            for sink_path in sink_path_pool:
+                matrix_row_str += cell_template.replace("[%COUNT%]",
+                                                        str(self.__get_bin_count_for(source_path, sink_path))) + "\n"
             table_body += current_row.replace("[%MATCHES%]", matrix_row_str)
         content = content.replace("[%BODY%]", table_body)
         # write to file

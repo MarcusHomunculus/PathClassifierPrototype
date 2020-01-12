@@ -1,8 +1,9 @@
-from typing import List, Tuple, Dict
+from typing import Dict
 import toml
 
 from matcher.XlsxProcessor import XlsxProcessor
 from matcher.XmlProcessor import XmlProcessor
+from matcher.internal.debug.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 
 
@@ -58,4 +59,6 @@ class MatchingManager:
 
     def dump_classifier_matrix(self, file: str) -> None:
         # TODO: write some expressive docu here
-        self.__classifier.dump_as_html(file)
+        raw_data = self.__classifier.dump_raw_data()
+        writer = HtmlWriter(raw_data)
+        writer.dump_as_html(file)
