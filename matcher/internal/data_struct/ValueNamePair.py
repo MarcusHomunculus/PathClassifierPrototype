@@ -16,6 +16,9 @@ class ValueNamePair:
         self.name = name
         self.value = value
 
+    def __str__(self):
+        return "{} : {}".format(self.value, self.name)
+
     @staticmethod
     def create_with_value(value: str) -> ValueNamePair:
         """

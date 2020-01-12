@@ -111,7 +111,7 @@ class XlsxProcessor:
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
-                        path: str) -> CellPositionStruct:
+                        path: str, check_for_value_only: bool = False) -> CellPositionStruct:
         """
         Iterates through the rows of the sheet given and tries to match the given list of value-URI-pairs in a row-wise
         fashion. If a match could be made the resulting path is pushed into the classifier
@@ -119,6 +119,7 @@ class XlsxProcessor:
         :param sheet: the sheet to search for matches
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
+        :param check_for_value_only: set this flag to return immediately after a value from the list is found
         :return a LineResultStruct if only a value has been found: this is important for forwarded searches else an
                 invalid / empty struct
         """
@@ -143,12 +144,11 @@ class XlsxProcessor:
                     forward_index = column_index_from_string(result.name_or_forward_position.column)
                 continue
             # else data has been found
-            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND:
+            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
                 if lowest_header_row > 0:
                     return result
-                return CellPositionStruct.create_no_find()
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -171,7 +171,7 @@ class XlsxProcessor:
         return CellPositionStruct.create_no_find()
 
     def _check_column_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
-                           path: str) -> CellPositionStruct:
+                           path: str, check_for_value_only: bool = False) -> CellPositionStruct:
         """
         Iterates through the columns of the sheet given and tries to match the given list of value-URI-pairs in a
         column-wise fashion. If a match could be made the resulting path is pushed into the classifier
@@ -179,6 +179,9 @@ class XlsxProcessor:
         :param sheet: the sheet to search for matches
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
+        :param check_for_value_only: set this flag to return immediately after a value from the list is found
+        :return a LineResultStruct if only a value has been found: this is important for forwarded searches else an
+                invalid / empty struct
         """
         current_sheet_path = "{}/{}".format(path, sheet.title)
         lowest_header_col: int = 0
@@ -198,12 +201,11 @@ class XlsxProcessor:
                     forward_index = result.name_or_forward_position.row
                 continue
             # else data has been found
-            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND:
+            if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
                 if lowest_header_col > 0:
                     return result
-                return CellPositionStruct.create_no_find()
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -367,18 +369,16 @@ class XlsxProcessor:
         if not os.path.exists(file_path):
             raise ForwardFileNotFound("Could not find {} file under: {}".format(file_name, file_path))
         path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_KEY])
-        if self.__classifier.get_active_source_path() == "sections/section/teams/team":
-            hello = "world"
         # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
         # be stupid
         value_pair: Iterator[ValueNamePair] = [ValueNamePair.create_with_value(testing_struct.get_missing_entry())]
         wb = load_workbook(file_path)
         for sheet in wb.sheetnames:
             # return the first value found
-            result_row = self._check_row_wise(wb[sheet], value_pair, path)
+            result_row = self._check_row_wise(wb[sheet], value_pair, path, True)
             if result_row.contains_value_forwarding_path():
                 return result_row
-            result_col = self._check_column_wise(wb[sheet], value_pair, path)
+            result_col = self._check_column_wise(wb[sheet], value_pair, path, True)
             if result_col.contains_value_forwarding_path():
                 return result_col
         return CellPositionStruct.create_no_find()

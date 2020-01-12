@@ -41,17 +41,18 @@ class CellMatchingStruct:
         """
         if self.success_type is CellMatchResult.NO_FINDING:
             for entry in self.__pool:
-                to_return = CellMatchResult.NO_FINDING
                 # check if the value is **in** the value rather then for equality for higher flexibility
                 # -> if types can be distinguished (by extracting them from eg. the XML-Schema) it would make more sense
                 # to check numerical values vor equality or double values for a certain count of digits
                 if entry.value in value:
                     self.__expected = entry.name
-                    to_return = self.success_type = CellMatchResult.VALUE_FOUND
+                    self.success_type = CellMatchResult.VALUE_FOUND
+                    return self.success_type
                 elif entry.name in value:
                     self.__expected = entry.value
-                    to_return = self.success_type = CellMatchResult.NAME_FOUND
-                return to_return
+                    self.success_type = CellMatchResult.NAME_FOUND
+                    return self.success_type
+            return CellMatchResult.NO_FINDING
         if self.success_type.value > 1:
             # means either the value or the name is missing
             if self.__expected in value:
