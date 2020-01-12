@@ -19,6 +19,15 @@ class HtmlWriter:
             # TODO: doc me
             with open("matcher/internal/templates/{}.htm".format(name), "r") as template_file:
                 return template_file.read()
+
+        def assign_bin_class(current_bin: int, max_bin: int) -> str:
+            # TODO: I need some docu here
+            if current_bin == 0:
+                return "zero_val"
+            if current_bin < max_bin:
+                return "intermediate_val"
+            return "max_val"
+
         # retrieve a list of all paths registered from the sink file
         sink_path_set: Set[str] = set()
         for line in self._raw_data:
@@ -42,9 +51,16 @@ class HtmlWriter:
             source_path = row[0]
             current_row = row_template.replace("[%SOURCE_PATH%]", source_path)
             matrix_row_str = ""
+            # first find the highest value for the current row
+            max_count = -1
+            for pair in row[1]:
+                if pair[1] > max_count:
+                    max_count = pair[1]
+            # now assemble the string
             for sink_path in sink_path_pool:
-                matrix_row_str += cell_template.replace("[%COUNT%]",
-                                                        str(self.__get_bin_count_for(source_path, sink_path))) + "\n"
+                cell_no = self.__get_bin_count_for(source_path, sink_path)
+                current_cell = cell_template.replace("[%COUNT%]", str(cell_no) + "\n")
+                matrix_row_str += current_cell.replace("[%MATCH_TYPE%]", assign_bin_class(cell_no, max_count))
             table_body += current_row.replace("[%MATCHES%]", matrix_row_str)
         content = content.replace("[%BODY%]", table_body)
         # write to file

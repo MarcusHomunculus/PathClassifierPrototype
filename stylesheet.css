@@ -5,8 +5,8 @@ h1 {
 table {
     border-collapse: collapse;
     text-align: center;
-    table-layout: fixed;
-    width: 100%;
+    caption-side: bottom;
+    margin: 30px;
 }
 
 th, td {
@@ -14,25 +14,34 @@ th, td {
 }
 
 .sink_path {
-    text-align: center;
-    white-space: nowrap;
-    transform-origin: 50% 50%;
-    /* -webkit-transform: rotate(90deg);
-    -moz-transform: rotate(90deg);
-    -ms-transform: rotate(90deg);
-    -o-transform: rotate(90deg); */
-    transform: rotate(270deg);
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    min-width: 40px;
+    padding: 10px;
 }
 
-.sink_path p {
-    margin: 0 -100%;
-    display: inline-block;
+.source_path {
+    padding: 10px;
+    text-align: left;
 }
 
-.sink_path p:before {
-    content: '';
-    width: 0;
-    padding-top: 100%;
-    display: inline-block;
-    vertical-align: middle;
+caption {
+    text-align: right;
+    padding-top: 10px;
+}
+
+.bin_cell {
+    color: white;
+}
+
+.zero_val {
+    background-color: lightgray;
+}
+
+.intermediate_val {
+    background-color: blue;
+}
+
+.max_val {
+    background-color: green;
 }
