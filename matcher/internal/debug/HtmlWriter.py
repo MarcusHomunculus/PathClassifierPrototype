@@ -1,6 +1,7 @@
 from typing import List, Tuple, Set
 import html
 
+
 class HtmlWriter:
 
     _raw_data: List[Tuple[str, List[Tuple[str, int]]]]
@@ -14,14 +15,22 @@ class HtmlWriter:
         self._raw_data = raw_data
 
     def dump_as_html(self, target_path: str) -> None:
-        # TODO: write some nice docu here
+        """
+        Creates a html-file containing the classifier data (received with the constructor) as a 2D table
+
+        :param target_path: the file to write the html data into
+        """
         def get_template(name: str) -> str:
-            # TODO: doc me
+            """
+            Returns the content of the given htm-template as string
+            """
             with open("matcher/internal/templates/{}.htm".format(name), "r") as template_file:
                 return template_file.read()
 
         def assign_bin_class(current_bin: int, max_bin: int) -> str:
-            # TODO: I need some docu here
+            """
+            Returns the class label for CSS depending on the given bin-value in relation to the max-count for the row
+            """
             if current_bin == 0:
                 return "zero_val"
             if current_bin < max_bin:
