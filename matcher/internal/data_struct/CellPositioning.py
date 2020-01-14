@@ -99,16 +99,18 @@ class CellPositionStruct:
 
     @staticmethod
     def create_data_pair_found(match_result: CellMatchingStruct, value_position: CellPosition,
-                               name_position: CellPosition) -> CellPositionStruct:
+                               name_position: CellPosition, value_path: str = "") -> CellPositionStruct:
         """
         Creates an instance which holds the position of the data found
 
         :param match_result: the struct holding the match information
         :param value_position: the position of the value in the table
         :param name_position: the position of the name in the table
+        :param value_path: in case of the search was forwarded to another file set this param to indicate the final path
         :return: an instance representing an success in finding a value name pair in the given line
         """
-        return CellPositionStruct(CellPositionStructType.DATA_FOUND, match_result, value_position, name_position, "")
+        return CellPositionStruct(CellPositionStructType.DATA_FOUND, match_result, value_position, name_position,
+                                  value_path)
 
     @staticmethod
     def create_value_found(match_result: CellMatchingStruct, value_position: CellPosition,
