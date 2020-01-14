@@ -16,6 +16,7 @@ class CrossTableStruct:
 
     __opposite_value: str
     __opposite_list: List[str]
+    __first_position_is_value: bool
     first_find: CellPosition
     opposite_find: CellPosition
     REQUIRED_SUCCESS_RATE = 0.5
@@ -26,6 +27,7 @@ class CrossTableStruct:
         """
         self.__opposite_value = ""
         self.__opposite_list = []
+        self.__first_position_is_value = False
         self.first_find = CellPosition.create_invalid()
         self.opposite_find = CellPosition.create_invalid()
 
@@ -70,6 +72,22 @@ class CrossTableStruct:
             return -1
         return len(self.__opposite_list)
 
+    def is_complete(self) -> bool:
+        """
+        Returns if all required data for deriving the cross-tables structure has been set
+
+        :return: true if the struct contains all required data else false
+        """
+        return self.first_find.is_valid() and self.opposite_find.is_valid()
+
+    def first_position_represents_value(self):
+        """
+        Answers if the first position describes the location of a value
+
+        :return: true if the position points to a value else it returns false which means it points to a name
+        """
+        return self.__first_position_is_value
+
     @staticmethod
     def values_exist_in(to_scan: Iterator[Cell], to_find: Iterator[ValueNamePair]) -> Tuple[bool, CrossTableStruct]:
         """
@@ -93,6 +111,7 @@ class CrossTableStruct:
                     # this branch should only be reached once so set all struct members possible to set
                     result_container.__opposite_value = names[i]
                     result_container.__opposite_list = names
+                    result_container.__first_position_is_value = True
                     result_container.first_find = CellPosition.create_from(cell)
                     found_indices.add(i)
                     read_state = CrossTableStruct.FindingState.VALUE_FOUND
@@ -102,6 +121,7 @@ class CrossTableStruct:
                 elif cell.value == names[i] and read_state == CrossTableStruct.FindingState.NO_FIND:
                     result_container.__opposite_value = values[i]
                     result_container.__opposite_list = values
+                    result_container.__first_position_is_value = False
                     result_container.first_find = CellPosition.create_from(cell)
                     found_indices.add(i)
                     read_state = CrossTableStruct.FindingState.NAME_FOUND
