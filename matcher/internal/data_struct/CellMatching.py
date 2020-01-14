@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import IntEnum
 from typing import List, Iterator
 
 from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
-class CellMatchResult(Enum):
+class CellMatchResult(IntEnum):
     NO_FINDING = 0
     ALL_FOUND = 1
     NAME_FOUND = 2
