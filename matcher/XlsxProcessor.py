@@ -112,16 +112,17 @@ class XlsxProcessor:
                 continue
             # else a pair has been detected -> collect all the required data and push the result into the classifier
             row_data_start = lowest_header_row + 1
-            value_cell = self.__to_linear_cell_address(False, result.value_position.column, row_data_start,
-                                                       result.value_position.read_type)
-            value_path = current_sheet_path if not result.contains_value_forwarding_path() else result.value_path
-            final_path = "{}/@{};".format(value_path, value_cell)
             name_cell = self.__to_linear_cell_address(False, result.name_or_forward_position.column, row_data_start,
                                                       result.name_or_forward_position.read_type)
+            # if the value path was external / forwarding use the one stored -> only the locals know the environment
             if result.contains_value_forwarding_path():
+                final_path = result.value_path + ";"    # make the path final
                 # prepend the current path to the name path to indicate that both differ
                 name_cell = "{}/@{}".format(current_sheet_path, name_cell)
             else:
+                value_cell = self.__to_linear_cell_address(False, result.value_position.column, row_data_start,
+                                                           result.value_position.read_type)
+                final_path = "{}/@{};".format(current_sheet_path, value_cell)
                 name_cell = "@{}".format(name_cell)
             final_path += name_cell
             self.__classifier.add_potential_match(final_path)
@@ -173,16 +174,16 @@ class XlsxProcessor:
                 continue
             # else a pair has been detected -> collect all the required data and push the result into the classifier
             col_data_start = get_column_letter(lowest_header_col + 1)
-            value_cell = self.__to_linear_cell_address(True, col_data_start, result.value_position.row,
-                                                       result.value_position.read_type)
-            value_path = current_sheet_path if not result.contains_value_forwarding_path() else result.value_path
-            final_path = "{}/@{};".format(value_path, value_cell)
             name_cell = self.__to_linear_cell_address(True, col_data_start, result.name_or_forward_position.row,
                                                       result.name_or_forward_position.read_type)
             if result.contains_value_forwarding_path():
+                final_path = result.value_path + ";"
                 # prepend the current path to the name path to indicate that both differ
                 name_cell = "{}/@{}".format(current_sheet_path, name_cell)
             else:
+                value_cell = self.__to_linear_cell_address(True, col_data_start, result.value_position.row,
+                                                           result.value_position.read_type)
+                final_path = "{}/@{};".format(current_sheet_path, value_cell)
                 name_cell = "@{}".format(name_cell)
             final_path += name_cell
             self.__classifier.add_potential_match(final_path)
@@ -297,14 +298,15 @@ class XlsxProcessor:
         final_path = "{}/{}/@{};{};{}".format(path, sheet.title, cross_area, value_area, name_area)
         self.__classifier.add_potential_match(final_path)
 
-    def _follow_forward_to(self, file_name: str, work_path: str,
-                           testing_struct: CellMatchingStruct) -> CellPositionStruct:
+    def _follow_forward_to(self, file_name: str, work_path: str, testing_struct: CellMatchingStruct,
+                           forwarding_index: int) -> CellPositionStruct:
         """
         Performs a row- and a column-wise search for the value in the file specified
 
         :param file_name: the file name to check for the value
         :param work_path: the internal path which describes the "address" from the root-file
         :param testing_struct: the struct which can be used to find the value
+        :param forwarding_index: the index of the column or row that triggered the forwarding
         :return: A CellPositionStruct of "type" value_found or no_find
         """
         if testing_struct.success_type == CellMatchResult.NO_FINDING:
@@ -313,7 +315,7 @@ class XlsxProcessor:
         file_path = self.__nested_xlsx_dir + file_name
         if not os.path.exists(file_path):
             raise ForwardFileNotFound("Could not find {} file under: {}".format(file_name, file_path))
-        path = work_path + "/{}".format(self.__config[self.FORWARDING_PATH_KEY])
+        path = work_path + "/{}{}".format(self.__config[self.FORWARDING_PATH_KEY], forwarding_index)
         # create a dummy list which only contains the missing entry -> which has to be value else the forwarding would
         # be stupid
         value_pair: Iterator[ValueNamePair] = [ValueNamePair.create_with_value(testing_struct.get_missing_entry())]
@@ -375,6 +377,7 @@ class XlsxProcessor:
         result_struct = CellMatchingStruct(value_name_pairs)
         value_position = CellPosition.create_invalid()
         name_position = CellPosition.create_invalid()
+        value_path = ""
         is_header = False
         for cell in to_scan:
             current_idx += 1
@@ -391,10 +394,13 @@ class XlsxProcessor:
                 continue
             # now the cell should contain some data -> find out if it is data of interest
             if current_idx == forward_index:
-                result = self._follow_forward_to(cell.value, current_path, result_struct)
+                result = self._follow_forward_to(cell.value, current_path, result_struct, current_idx)
                 # write directly to value_position as the name shouldn't be found in the forwarding file
                 # -> this would beat the whole purpose of the forwarding
                 result_struct = result.match_struct
+                # manually override the success-type as by copying it is only set the value found while no both are
+                # available now
+                result_struct.success_type = CellMatchResult.ALL_FOUND
                 value_position = result.value_position
                 value_path = result.value_path
             else:
@@ -407,7 +413,8 @@ class XlsxProcessor:
                         value_position = CellPosition.create_from(cell, cell_data[data])
             if name_position.is_valid() and value_position.is_valid():
                 # no reason to continue -> everything has been found
-                return CellPositionStruct.create_data_pair_found(result_struct, value_position, name_position)
+                return CellPositionStruct.create_data_pair_found(result_struct, value_position, name_position,
+                                                                 value_path)
         # keep this separated as their separation ensures that header and data are detected in different lines
         # -> prefer the the header over the value as this ensures that header and value can only be detected in
         # different calls of the function and the header has to be detected first anyway
