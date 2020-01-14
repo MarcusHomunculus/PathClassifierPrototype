@@ -96,14 +96,17 @@ class XlsxProcessor:
                     forward_index = column_index_from_string(result.name_or_forward_position.column)
                 continue
             # else data has been found
-            if lowest_header_row < 1:
-                # no header detected -> don't expect viable data
-                continue
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
-                if lowest_header_row > 0:
-                    return result
+                if lowest_header_row < 1:
+                    # probably wrong orientation
+                    return CellPositionStruct.create_no_find()
+                # add the final piece to the path
+                result.value_path += self.__to_linear_cell_address(False, result.value_position.column,
+                                                                   lowest_header_row + 1,
+                                                                   result.value_position.read_type)
+                return result
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -155,14 +158,16 @@ class XlsxProcessor:
                 if result.contains_header_forwarding_position():
                     forward_index = result.name_or_forward_position.row
                 continue
-            if lowest_header_col < 1:
-                continue
-            # else data has been found
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
-                if lowest_header_col > 0:
-                    return result
+                if lowest_header_col < 1:
+                    # probably wrong orientation
+                    return CellPositionStruct.create_no_find()
+                result.value_path += self.__to_linear_cell_address(True, get_column_letter(lowest_header_col + 1),
+                                                                   result.value_position.row,
+                                                                   result.value_position.read_type)
+                return result
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -367,7 +372,6 @@ class XlsxProcessor:
         if value_name_pairs is None:
             value_name_pairs = []
         current_idx = 0     # which results in starting the iteration with 1 which is the start for excel
-        value_path = ""
         result_struct = CellMatchingStruct(value_name_pairs)
         value_position = CellPosition.create_invalid()
         name_position = CellPosition.create_invalid()
@@ -410,6 +414,8 @@ class XlsxProcessor:
         if is_header:
             return CellPositionStruct.create_header_found(CellPosition.create_invalid())
         if value_position.is_valid():
+            # assemble the value path -> this can't be completed however as higher level information is required
+            value_path = "{}/@".format(current_path)
             return CellPositionStruct.create_value_found(result_struct, value_position, value_path)
         return CellPositionStruct.create_no_find()
 
@@ -453,7 +459,7 @@ class XlsxProcessor:
     @staticmethod
     def __to_linear_cell_address(is_fixed_row: bool, col: str, row: int, property_identifier: CellPropertyType) -> str:
         """
-        Inserts the given arguments into the template given. This function is merely a reminder to use a template
+        Inserts the given arguments into the template selected depending on the first argument
 
         :param is_fixed_row: if the template should assume a row-wise reading scheme or a column-wise scheme
         :param col: the column to insert
