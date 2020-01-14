@@ -38,23 +38,28 @@ class CellMatchingStruct:
         :param value: the value to test against the list of value-name-pairs given to the constructor
         :return: if something could be matched in the form of an enum
         """
+        if value == "":
+            return CellMatchResult.NO_FINDING
         if self.success_type is CellMatchResult.NO_FINDING:
             for entry in self.__pool:
                 # check if the value is **in** the value rather then for equality for higher flexibility
                 # -> if types can be distinguished (by extracting them from eg. the XML-Schema) it would make more sense
                 # to check numerical values vor equality or double values for a certain count of digits
-                if entry.value in value:
+                if entry.value == value:
                     self.__expected = entry.name
                     self.success_type = CellMatchResult.VALUE_FOUND
                     return self.success_type
-                elif entry.name in value:
+                elif entry.name == value:
                     self.__expected = entry.value
                     self.success_type = CellMatchResult.NAME_FOUND
                     return self.success_type
             return CellMatchResult.NO_FINDING
         if self.success_type.value > 1:
+            # an empty value is an invalid value
+            if self.__expected == "":
+                return CellMatchResult.NO_FINDING
             # means either the value or the name is missing
-            if self.__expected in value:
+            if self.__expected == value:
                 last_state = self.success_type
                 self.success_type = CellMatchResult.ALL_FOUND
                 if last_state == CellMatchResult.NAME_FOUND:
