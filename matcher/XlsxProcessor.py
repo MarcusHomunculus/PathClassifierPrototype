@@ -13,58 +13,10 @@ from matcher.internal.data_struct.CellPositioning import CellPosition, CellPosit
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import ForwardFileNotFound
 from matcher.internal.data_struct.ValueNamePair import ValueNamePair
+from matcher.internal.data_struct.CrossTableStruct import CrossTableStruct
 
 
 class XlsxProcessor:
-
-    class PathDataCluster:
-        value_id: str
-        value_property: CellPropertyType
-        name_id: str
-        name_property: CellPropertyType
-
-        def __init__(self, value_id: str,
-                     value_property: CellPropertyType,
-                     name_id: str,
-                     name_property: CellPropertyType):
-            """
-            The constructor for a cluster holding data to build a path
-            :param value_id: the volatile identifier part of the cell for the value cell
-            :param value_property: the property the value was derived from
-            :param name_id: the volatile identifier part of the cell for the name cell
-            :param name_property: the property the name was derived from
-            """
-            self.value_id = value_id
-            self.value_property = value_property
-            self.name_id = name_id
-            self.name_property = name_property
-
-    class ForwardHelperCluster:
-        struct: CellMatchingStruct
-        value_position: CellPosition
-        final_path: str
-
-        def __init__(self, struct: CellMatchingStruct, value_position: CellPosition, path: str):
-            """
-            Creates an instance of a helper struct to bundle data from a forwarding attempt. The struct is should be the
-            same as the one received with the forwarding command and is explicitly returned to express the intention to
-            change it's state
-
-            :param struct: the potentially updated struct received
-            :param value_position: the position of the value found as cell coordinate
-            :param path: the path to the sheet where the value can be found
-            """
-            self.struct = struct
-            self.value_position = value_position
-            self.final_path = path
-
-        def to_tuple(self) -> Tuple[CellMatchingStruct, CellPosition, str]:
-            """
-            Allows to transform the cluster to a tuple for inline unpacking
-
-            :return: the structs members clustered as a tuple
-            """
-            return self.struct, self.value_position, self.final_path
 
     FORWARDING_KEY = "forwarding_on"
     FORWARDING_PATH_KEY = "path_forward_symbol"
@@ -252,7 +204,9 @@ class XlsxProcessor:
             start_len = float(len(work))
             earliest_hit = 1000
             for cell in line:
-                current_val = str(cell.value)
+                if cell.value is None:
+                    continue
+                current_val = cell.value
                 if current_val in work:
                     work.remove(current_val)
                     if cell.row < earliest_hit:
@@ -262,7 +216,7 @@ class XlsxProcessor:
                 return True, earliest_hit
             return False, -1
 
-        def find_name_in_col(column: Iterator[Cell], to_find: str) -> Cell:
+        def find_name_in_col(column: Iterator[Cell], to_find: str) -> CellPosition:
             """
             Goes through the given column and returns the cell the value was found in else None
 
@@ -272,10 +226,10 @@ class XlsxProcessor:
             """
             for cell in column:
                 if cell.value == to_find:
-                    return cell
-            return None
+                    return CellPosition.create_from(cell)
+            return CellPosition.create_invalid()
 
-        def find_x(start_index: int) -> Cell:
+        def find_x(start_index: int) -> CellPosition:
             """
             Returns the first cell in which a "x" could be found starting from the row index given
             :param start_index: from which index to start looking for a x
@@ -284,72 +238,128 @@ class XlsxProcessor:
             for row in sheet.iter_rows(min_row=start_index):
                 row_cell: Cell
                 for row_cell in row:
-                    if str(row_cell.value) == "x" or str(row_cell.value) == "X":
-                        return row_cell
-            return None
+                    if row_cell.value == "x" or row_cell.value == "X":
+                        return CellPosition.create_from(row_cell)
+            return CellPosition.create_invalid()
 
-        def find_data_field_start(to_scan: Iterator[Cell], is_row: bool) -> int:
+        def find_xs(start_row: int, how_many: int) -> bool:
+            """
+            Goes through the rows below the given one and counts every single X it encounters: if the count reaches the
+            how_many-argument true is returned
+
+            :param start_row: the row to start searching at
+            :param how_many: the many x's should be found
+            :return: true if the expected count was reached else false
+            """
+            x_count = 0
+            for row in sheet.iter_rows(min_row=start_row):
+                for cell in row:
+                    if cell.value == "x" or cell.value == "X":
+                        x_count += 1
+                    if x_count >= how_many:
+                        return True
+            return False
+
+        def scan_rows_for_list_until(data: CrossTableStruct) -> Tuple[bool, CrossTableStruct]:
+            """
+            Goes through the rows of the sheet in search for the list of the other part of the value-name pairs until
+            the given row. Returns the given struct again to indicate that the struct might be altered
+
+            :param data: the struct that holds all the required data
+            :return: a tuple if enough values could be found and the updated struct in this case
+            """
+            for row in sheet.iter_rows(max_row=data.first_find.row):
+                found_list = data.find_other_pair_values_in(row)
+                if found_list:
+                    # the second position had been stored with the check already
+                    return True, data
+            return False, data
+
+
+        def find_data_field_start(to_scan: Iterator[Cell]) -> CellPosition:
             """
             Triggers on the first color change of cell background color that does come after a cell that was not white
 
             :param to_scan: the row / column to check for the color change
-            :param is_row: if the iterator at hand represents a row or a column
-            :return: the index of column or row the new color appeared
+            :return: the position at which the transition from non-white to another color appeared
             """
             header_color = ""
             for cell in to_scan:
-                if cell.fill.bgColor.rgb == "00000000" and header_color == "":
+                if header_color == "" and cell.fill.bgColor.rgb == "00000000":
                     continue    # ignore white cells which might be around the table itself
-                if header_color == "":
-                    header_color = cell.fill.bgColor.rgb
                 elif cell.fill.bgColor.rgb != header_color:
-                    if is_row:
-                        return cell.column
-                    return cell.row
+                    if header_color == "":
+                        header_color = cell.fill.bgColor.rgb
+                    else:
+                        # color has already been set so there's a new color at hand -> table header is reached
+                        return CellPosition.create_from(cell)
+            return CellPosition.create_invalid()
+
+        def value_of(position: CellPosition) -> str:
+            """
+            Returns the cell content at the given position
+
+            :param position: where to extract the value from
+            :return: the value of the cell
+            """
+            return sheet["{}{}".format(position.column, position.row)].value
 
         values, names = ValueNamePair.unzip(value_name_pairs)
-        for col_iter in sheet.iter_cols():
-            col = list(col_iter)    # transform it so we can search through it multiple times
-            success_names, name_index = check_line_for_list_entries(col, names)
-            success_values, value_index = check_line_for_list_entries(col, values)
-            if not (success_names or success_values):
+        for col in sheet.iter_cols():
+            success, progress_struct = CrossTableStruct.values_exist_in(col, value_name_pairs)
+            if not success:
                 continue
-            # find the first row which contains a 'x' and try to find it's matching value in that column
-            if success_names:
-                x_cell = find_x(name_index)
-            else:
-                x_cell = find_x(value_index)
-            if x_cell is None:
-                # does not seem to be a cross table: just abort
+            # a cross matrix should have a side and a top -> now check if the top exists: it should be above the first
+            # value
+            success, progress_struct = scan_rows_for_list_until(progress_struct)
+            if not success:
+                # probably not a cross table -> stop here
                 return
-            # TODO: a proper implementation might better check for multiple 'X'
-            # find the corresponding value or name
-            found_one = sheet["{}{}".format(col[0].column_letter, x_cell.row)]
-            counterpart_content = values[names.index(found_one.value)] if success_names else names[values.index(
-                found_one.value)]
-            counterpart_cell = find_name_in_col(sheet[x_cell.column], counterpart_content)
-            if counterpart_cell is None:
-                # seems like it isn't a cross table after all
+            # now check if we find some "x" below which is a strong indicator in combination with the results above
+            success = find_xs(progress_struct.opposite_find.row,
+                              CrossTableStruct.REQUIRED_SUCCESS_RATE * progress_struct.get_sample_size())
+            if not success:
+                # no cross table after all
                 return
-            # perform a final check if the column contains eg. most of the names the row should contain most of the
-            # values
-            confirmed, _ = check_line_for_list_entries(sheet[counterpart_cell.row], names if success_values else values)
-            if not confirmed:
-                # most of the expected counter values could not be found in a row -> doesn't seem to be cross table
-                return
-            # derive the start of the center field from the color changes in the detected row and column -> this is
-            # should be more robust then working with the names itself which might be incomplete
-            field_start_col = get_column_letter(find_data_field_start(sheet[x_cell.row], True))
-            field_start_row = find_data_field_start(sheet[counterpart_cell.column_letter], False)
-            # check which belongs where: are names in the column or values
-            top_bar_pos = "{}${}".format(field_start_col, counterpart_cell.row)
-            side_bar_pos = "${}{}".format(col[0].column_letter, field_start_row)
-            values_start = side_bar_pos if success_values else top_bar_pos
-            names_start = top_bar_pos if success_values else side_bar_pos
-            current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
-                                                      names_start)
-            self.__classifier.add_potential_match(current_path)
-            # the cross table has been identified, next attempts should fail anyway so abort search
+            # if this line has been reached it is safe to assume to have a cross table at hand
+            # TODO: check for the colors now
+
+            # # find the first row which contains a 'x' and try to find it's matching value in that column
+            # if success_names:
+            #     x_cell = find_x(name_index)
+            # else:
+            #     x_cell = find_x(value_index)
+            # if not x_cell.is_valid():
+            #     # does not seem to be a cross table: just abort
+            #     return
+            # # TODO: a proper implementation might better check for multiple 'X'
+            # # find the corresponding value or name
+            # found_one = sheet["{}{}".format(, x_cell.row)]
+            # counterpart_content = values[names.index(found_one.value)] if success_names else names[values.index(
+            #     found_one.value)]
+            # counterpart_pos = find_name_in_col(sheet[x_cell.column], counterpart_content)
+            # if counterpart_pos is None:
+            #     # seems like it isn't a cross table after all
+            #     return
+            # # perform a final check if the column contains eg. most of the names the row should contain most of the
+            # # values
+            # confirmed, _ = check_line_for_list_entries(sheet[counterpart_pos.row], names if success_values else values)
+            # if not confirmed:
+            #     # most of the expected counter values could not be found in a row -> doesn't seem to be cross table
+            #     return
+            # # derive the start of the center field from the color changes in the detected row and column -> this is
+            # # should be more robust then working with the names itself which might be incomplete
+            # field_start_col = get_column_letter(find_data_field_start(sheet[x_cell.row], True))
+            # field_start_row = find_data_field_start(sheet[counterpart_pos.column], False)
+            # # check which belongs where: are names in the column or values
+            # top_bar_pos = "{}${}".format(field_start_col, counterpart_pos.row)
+            # side_bar_pos = "${}{}".format(col[0].column_letter, field_start_row)
+            # values_start = side_bar_pos if success_values else top_bar_pos
+            # names_start = top_bar_pos if success_values else side_bar_pos
+            # current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
+            #                                           names_start)
+            # self.__classifier.add_potential_match(current_path)
+            # # the cross table has been identified, next attempts should fail anyway so abort search
             return
 
     def _follow_forward_to(self, file_name: str, work_path: str,
@@ -422,17 +432,6 @@ class XlsxProcessor:
             :return: true if the colors match else false
             """
             return to_check.fill.bgColor.rgb == header_color or to_check.fill.fgColor.rgb == header_color
-
-        def matches_bitwise(current_state: CellMatchResult, mask: CellMatchResult) -> bool:
-            """
-            Checks if the bit in mask is set in current_state: if so true is returned
-            :param current_state: the current state of the CellMatchStruct
-            :param mask: the intended property to check for (get's interpreted as mask)
-            :return: true if the bit in current_state is set which is also set in mask
-            """
-            tmp_current = int(current_state)
-            tmp_mask = int(mask)
-            return bool(current_state & mask)
 
         if value_name_pairs is None:
             value_name_pairs = []
