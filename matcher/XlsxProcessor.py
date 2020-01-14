@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Iterator, Dict, Any, Union
+from typing import Tuple, Iterator, Dict
 import re
 import os
 from openpyxl import load_workbook
@@ -86,8 +86,8 @@ class XlsxProcessor:
         row_index = 0   # start with zero to be conform with xlsx
         for row in sheet.iter_rows():
             row_index += 1
-            result = self.__scan_cell_line_for(row, current_sheet_path, value_name_pairs, forward_index, header_color,
-                                               "" if not handle_forwarding else forwarding_column_name)
+            result = self.__scan_cell_line_for(row, current_sheet_path, sheet, value_name_pairs, forward_index,
+                                               header_color, "" if not handle_forwarding else forwarding_column_name)
             if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
             elif result.read_result == CellPositionStructType.HEADER_FOUND:
@@ -143,7 +143,7 @@ class XlsxProcessor:
         col_index = -1
         for column in sheet.iter_cols():
             col_index += 1
-            result = self.__scan_cell_line_for(column, current_sheet_path, value_name_pairs, forward_index,
+            result = self.__scan_cell_line_for(column, current_sheet_path, sheet, value_name_pairs, forward_index,
                                                header_color, "" if not handle_forwarding else forwarding_row_name)
             if result.read_result == CellPositionStructType.NO_FINDING:
                 continue
@@ -201,7 +201,6 @@ class XlsxProcessor:
             x_count = 0
             for row in sheet.iter_rows(min_row=start_row):
                 for cell in row:
-                    color = cell.fill.start_color.index
                     if cell.value == "x" or cell.value == "X":
                         x_count += 1
                     if x_count >= how_many:
@@ -335,7 +334,7 @@ class XlsxProcessor:
             return False, ""
         return True, names[1]
 
-    def __scan_cell_line_for(self, to_scan: Iterator[Cell], current_path: str,
+    def __scan_cell_line_for(self, to_scan: Iterator[Cell], current_path: str, sheet: Worksheet,
                              value_name_pairs: Iterator[ValueNamePair] = None, forward_index: int = -1,
                              header_color: str = "", forward_name: str = "") -> CellPositionStruct:
         """
@@ -344,6 +343,7 @@ class XlsxProcessor:
 
         :param to_scan: the iterator for a collection of cells (which is usually either a column or a row)
         :param current_path: the current path within the file / sheet structure
+        :param sheet: the current worksheet to access the list of merged cells
         :param value_name_pairs: the values and names to find in the sheet. Set if you want to find these data
         :param forward_index: set this parameter if at this given index the content has to be interpreted as file name
         :param header_color: set this value if a header has to be detected
@@ -389,7 +389,7 @@ class XlsxProcessor:
                 value_position = result.value_position
                 value_path = result.value_path
             else:
-                cell_data = XlsxProcessor.__extract_cell_properties(cell)
+                cell_data = XlsxProcessor.__extract_cell_properties(cell, sheet)
                 for data in cell_data.keys():
                     result = result_struct.test_value(data)
                     if result == CellMatchResult.NAME_FOUND:
@@ -418,14 +418,31 @@ class XlsxProcessor:
         return cell.fill.start_color.index
 
     @staticmethod
-    def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, CellPropertyType]:
+    def __extract_cell_properties(to_extract_from: Cell, sheet: Worksheet) -> Dict[str, CellPropertyType]:
         """
         Takes the cell an creates a list of properties from it
 
         :param to_extract_from: the cell the properties are wanted from
         :return: a list of all properties supported
         """
-        return {str(to_extract_from.value): CellPropertyType.CONTENT}
+        def get_cell_size(to_read_from: Cell) -> int:
+            """
+            Returns the size of the cell at hand in the count of columns
+
+            :param to_read_from: the cell to get the size from
+            :return: the size of the cell if it is merged else 1 is returned
+            """
+            # courtesy goes to: https://stackoverflow.com/a/57525843
+            cell = sheet.cell(to_read_from.row, to_read_from.column)
+            for merged_cells in sheet.merged_cells.ranges:
+                if cell.coordinate in merged_cells:
+                    # as merged cells only expand in columns
+                    return merged_cells.max_col - merged_cells.min_col + 1
+            return 1
+        return {
+            to_extract_from.value: CellPropertyType.CONTENT,
+            str(get_cell_size(to_extract_from)): CellPropertyType.WIDTH
+        }
 
     @staticmethod
     def __to_linear_cell_address(is_fixed_row: bool, col: str, row: int, property_identifier: CellPropertyType) -> str:
