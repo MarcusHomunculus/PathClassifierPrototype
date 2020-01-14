@@ -37,12 +37,12 @@ class CellPosition:
         return self.row > 0 and self.column and self.read_type != CellPropertyType.NONE
 
     @staticmethod
-    def create_from(cell: Cell, cell_property: CellPropertyType) -> CellPosition:
+    def create_from(cell: Cell, cell_property: CellPropertyType = CellPropertyType.CONTENT) -> CellPosition:
         """
         A factory method to create an instance from a openpyxl.Cell instance
 
         :param cell: the cell to take the "coordinates" from
-        :param cell_property: the property to get the content the instance is addressing
+        :param cell_property: the property to get the content the instance is addressing (defaults to the cells value)
         :return: an instance of CellPosition
         """
         return CellPosition(cell.row, cell.column_letter, cell_property)
