@@ -29,10 +29,33 @@ class CrossTableStruct:
         self.first_find = CellPosition.create_invalid()
         self.opposite_find = CellPosition.create_invalid()
 
-    def found_other_values(self, to_check: Iterator[Cell]) -> bool:
+    def check_for_other_pair_values(self, to_check: Iterator[Cell]) -> bool:
+        """
+        Checks if the given cell collection contains enough samples of from either the values list or the name list
+        depending on what was found with the call of values_exist_in()
+
+        :param to_check: the cell collection to check for the other part of the value-name-pair
+        :return: true if enough values had been found
+        """
         if not self.__opposite_list:
             return False
-        # TODO: continue here
+        work = list(self.__opposite_list)
+        for cell in to_check:
+            if cell.value in work:
+                work.remove(cell.value)
+        if len(work) <= (1 - self.REQUIRED_SUCCESS_RATE) * len(self.__opposite_list):
+            return True
+        return False
+
+    def contains_counterpart(self, to_check: Cell) -> bool:
+        """
+        Returns true if the given cell contains the expected value to match the first hit with the call to
+        values_exist_in()
+
+        :param to_check: the cell to check the value of
+        :return: true if the value matches the expected value else false
+        """
+        return to_check.value == self.__opposite_value
 
     @staticmethod
     def values_exist_in(to_scan: Iterator[Cell], to_find: Iterator[ValueNamePair]) -> Tuple[bool, CrossTableStruct]:
@@ -46,7 +69,7 @@ class CrossTableStruct:
         """
         values, names = ValueNamePair.unzip(to_find)
         # a set only allows unique entries -> finding the same value multiple time will therefor yield only one entry
-        found_indexes = set()
+        found_indices = set()
         read_state = CrossTableStruct.FindingState.NO_FIND
         result_container = CrossTableStruct()
         for cell in to_scan:
@@ -58,25 +81,24 @@ class CrossTableStruct:
                     result_container.__opposite_value = names[i]
                     result_container.__opposite_list = names
                     result_container.first_find = CellPosition.create_from(cell)
-                    found_indexes.add(i)
+                    found_indices.add(i)
                     read_state = CrossTableStruct.FindingState.VALUE_FOUND
                 elif cell.value == values[i] and read_state == CrossTableStruct.FindingState.VALUE_FOUND:
                     # only do the book keeping
-                    found_indexes.add(i)
+                    found_indices.add(i)
                 elif cell.value == names[i] and read_state == CrossTableStruct.FindingState.NO_FIND:
                     result_container.__opposite_value = values[i]
                     result_container.__opposite_list = values
                     result_container.first_find = CellPosition.create_from(cell)
-                    found_indexes.add(i)
+                    found_indices.add(i)
                     read_state = CrossTableStruct.FindingState.NAME_FOUND
                 elif cell.value == names[i] and read_state == CrossTableStruct.FindingState.NAME_FOUND:
-                    found_indexes.add(i)
+                    found_indices.add(i)
         # perform the "post-processing"
         if not result_container.__opposite_value:
             # value has not been set -> so no data found -> abort and return an empty struct
             return False, CrossTableStruct()
         # check if there have been enough hits to call it a success
-        if len(values) - len(found_indexes) > len(values) * (1 - CrossTableStruct.REQUIRED_SUCCESS_RATE):
+        if len(values) - len(found_indices) > len(values) * (1 - CrossTableStruct.REQUIRED_SUCCESS_RATE):
             return False, CrossTableStruct()
         return True, result_container
-
