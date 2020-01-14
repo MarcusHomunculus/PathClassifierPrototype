@@ -96,6 +96,9 @@ class XlsxProcessor:
                     forward_index = column_index_from_string(result.name_or_forward_position.column)
                 continue
             # else data has been found
+            if lowest_header_row < 1:
+                # no header detected -> don't expect viable data
+                continue
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
@@ -151,6 +154,8 @@ class XlsxProcessor:
                 lowest_header_col = col_index
                 if result.contains_header_forwarding_position():
                     forward_index = result.name_or_forward_position.row
+                continue
+            if lowest_header_col < 1:
                 continue
             # else data has been found
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
@@ -400,11 +405,12 @@ class XlsxProcessor:
                 # no reason to continue -> everything has been found
                 return CellPositionStruct.create_data_pair_found(result_struct, value_position, name_position)
         # keep this separated as their separation ensures that header and data are detected in different lines
-        # -> prefer the value over the header as no detected header means no correctly detected table
-        if value_position.is_valid():
-            return CellPositionStruct.create_value_found(result_struct, value_position, value_path)
+        # -> prefer the the header over the value as this ensures that header and value can only be detected in
+        # different calls of the function and the header has to be detected first anyway
         if is_header:
             return CellPositionStruct.create_header_found(CellPosition.create_invalid())
+        if value_position.is_valid():
+            return CellPositionStruct.create_value_found(result_struct, value_position, value_path)
         return CellPositionStruct.create_no_find()
 
     @staticmethod

@@ -12,6 +12,7 @@ venv/
 *.toml
 *.html
 *.log
+sections/
 
 # LibreOffice stuff
 .~lock.data.xlsx#
