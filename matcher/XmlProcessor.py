@@ -31,7 +31,7 @@ class XmlProcessor:
         # use a stack scheme as order is not relevant for the matching
         # -> switch to a generator in a "proper" implementation
         try:
-            current: Tuple[str, List[(str, str)]] = self.__targets.pop()
+            current: Tuple[str, List[ValueNamePair]] = self.__targets.pop()
             if not len(current[1]):
                 raise AssertionError("Should not register path '{}' without any value-name pairs".format(current[0]))
             self.__classifier.add_source_path(current[0])
@@ -74,7 +74,6 @@ class XmlProcessor:
             """
             for key in node.attrib.keys():
                 new_path = current_path + "/@{}".format(key)
-                # self.__classifier.add_source_path(new_path)
                 values = self._path_to_xml_values(new_path, parent_node)
                 self.__targets.append((new_path, ValueNamePair.zip(values, ids)))
 

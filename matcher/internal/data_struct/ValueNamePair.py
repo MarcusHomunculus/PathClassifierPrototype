@@ -6,15 +6,15 @@ class ValueNamePair:
     name: str
     value: str
 
-    def __init__(self, name: str, value: str):
+    def __init__(self, value: str, name: str):
         """
         Basic constructor
 
-        :param name: the name associated to the data point
         :param value: the data point to find
+        :param name: the name associated to the data point
         """
-        self.name = name
         self.value = value
+        self.name = name
 
     def __str__(self):
         return "{} : {}".format(self.value, self.name)
@@ -50,7 +50,7 @@ class ValueNamePair:
         """
         to_return = []
         for v, n in zip(values, names):
-            to_return.append(ValueNamePair(v, n))
+            to_return.append(ValueNamePair(value=v, name=n))
         return to_return
 
     @staticmethod
