@@ -1,10 +1,10 @@
-from enum import IntEnum
+from enum import Enum
 from typing import List, Iterator
 
 from matcher.internal.data_struct.ValueNamePair import ValueNamePair
 
 
-class CellMatchResult(IntEnum):
+class CellMatchResult(Enum):
     NO_FINDING = 0
     ALL_FOUND = 1
     NAME_FOUND = 2
@@ -57,7 +57,7 @@ class CellMatchingStruct:
             if self.__expected in value:
                 last_state = self.success_type
                 self.success_type = CellMatchResult.ALL_FOUND
-                if last_state == last_state == CellMatchResult.NAME_FOUND:
+                if last_state == CellMatchResult.NAME_FOUND:
                     return CellMatchResult.VALUE_FOUND
                 return CellMatchResult.NAME_FOUND
             return CellMatchResult.NO_FINDING
