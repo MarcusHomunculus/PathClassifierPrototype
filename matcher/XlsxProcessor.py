@@ -254,11 +254,27 @@ class XlsxProcessor:
             x_count = 0
             for row in sheet.iter_rows(min_row=start_row):
                 for cell in row:
+                    color = cell.fill.start_color.index
                     if cell.value == "x" or cell.value == "X":
                         x_count += 1
                     if x_count >= how_many:
                         return True
             return False
+
+        def scan_columns_for_list(pair_list: Iterator[ValueNamePair]) -> Tuple[bool, CrossTableStruct]:
+            """
+            Checks the columns if either the list of values or names from the list of pairs can be found or if both
+            lists are not present
+
+            :param pair_list: the data points to look for
+            :return: a tuple with true and the required data to continue or false and an useless struct if nothing could
+                     be found
+            """
+            for col in sheet.iter_cols():
+                list_found, first_data = CrossTableStruct.values_exist_in(col, pair_list)
+                if list_found:
+                    return True, first_data
+            return False, CrossTableStruct()
 
         def scan_rows_for_list_until(data: CrossTableStruct) -> Tuple[bool, CrossTableStruct]:
             """
@@ -275,7 +291,6 @@ class XlsxProcessor:
                     return True, data
             return False, data
 
-
         def find_data_field_start(to_scan: Iterator[Cell]) -> CellPosition:
             """
             Triggers on the first color change of cell background color that does come after a cell that was not white
@@ -285,11 +300,11 @@ class XlsxProcessor:
             """
             header_color = ""
             for cell in to_scan:
-                if header_color == "" and cell.fill.bgColor.rgb == "00000000":
+                if header_color == "" and self.__get_cell_color(cell) == "00000000":
                     continue    # ignore white cells which might be around the table itself
-                elif cell.fill.bgColor.rgb != header_color:
+                elif self.__get_cell_color(cell) != header_color:
                     if header_color == "":
-                        header_color = cell.fill.bgColor.rgb
+                        header_color = self.__get_cell_color(cell)
                     else:
                         # color has already been set so there's a new color at hand -> table header is reached
                         return CellPosition.create_from(cell)
@@ -304,63 +319,36 @@ class XlsxProcessor:
             """
             return sheet["{}{}".format(position.column, position.row)].value
 
-        values, names = ValueNamePair.unzip(value_name_pairs)
-        for col in sheet.iter_cols():
-            success, progress_struct = CrossTableStruct.values_exist_in(col, value_name_pairs)
-            if not success:
-                continue
-            # a cross matrix should have a side and a top -> now check if the top exists: it should be above the first
-            # value
-            success, progress_struct = scan_rows_for_list_until(progress_struct)
-            if not success:
-                # probably not a cross table -> stop here
-                return
-            # now check if we find some "x" below which is a strong indicator in combination with the results above
-            success = find_xs(progress_struct.opposite_find.row,
-                              CrossTableStruct.REQUIRED_SUCCESS_RATE * progress_struct.get_sample_size())
-            if not success:
-                # no cross table after all
-                return
-            # if this line has been reached it is safe to assume to have a cross table at hand
-            # TODO: check for the colors now
-
-            # # find the first row which contains a 'x' and try to find it's matching value in that column
-            # if success_names:
-            #     x_cell = find_x(name_index)
-            # else:
-            #     x_cell = find_x(value_index)
-            # if not x_cell.is_valid():
-            #     # does not seem to be a cross table: just abort
-            #     return
-            # # TODO: a proper implementation might better check for multiple 'X'
-            # # find the corresponding value or name
-            # found_one = sheet["{}{}".format(, x_cell.row)]
-            # counterpart_content = values[names.index(found_one.value)] if success_names else names[values.index(
-            #     found_one.value)]
-            # counterpart_pos = find_name_in_col(sheet[x_cell.column], counterpart_content)
-            # if counterpart_pos is None:
-            #     # seems like it isn't a cross table after all
-            #     return
-            # # perform a final check if the column contains eg. most of the names the row should contain most of the
-            # # values
-            # confirmed, _ = check_line_for_list_entries(sheet[counterpart_pos.row], names if success_values else values)
-            # if not confirmed:
-            #     # most of the expected counter values could not be found in a row -> doesn't seem to be cross table
-            #     return
-            # # derive the start of the center field from the color changes in the detected row and column -> this is
-            # # should be more robust then working with the names itself which might be incomplete
-            # field_start_col = get_column_letter(find_data_field_start(sheet[x_cell.row], True))
-            # field_start_row = find_data_field_start(sheet[counterpart_pos.column], False)
-            # # check which belongs where: are names in the column or values
-            # top_bar_pos = "{}${}".format(field_start_col, counterpart_pos.row)
-            # side_bar_pos = "${}{}".format(col[0].column_letter, field_start_row)
-            # values_start = side_bar_pos if success_values else top_bar_pos
-            # names_start = top_bar_pos if success_values else side_bar_pos
-            # current_path = "{}/{}/@{}{};{};{}".format(path, sheet.title, field_start_col, field_start_row, values_start,
-            #                                           names_start)
-            # self.__classifier.add_potential_match(current_path)
-            # # the cross table has been identified, next attempts should fail anyway so abort search
+        success, progress_struct = scan_columns_for_list(value_name_pairs)
+        if not success:
             return
+        # a cross matrix should have a side and a top -> now check if the top exists: it should be above the first value
+        success, progress_struct = scan_rows_for_list_until(progress_struct)
+        if not success:
+            # probably not a cross table -> stop here
+            return
+        # now check if we find some "x" below which is a strong indicator in combination with the results above
+        success = find_xs(progress_struct.opposite_find.row,
+                          CrossTableStruct.REQUIRED_SUCCESS_RATE * progress_struct.get_sample_size())
+        if not success:
+            # no cross table after all
+            return
+        # if this line has been reached it is safe to assume to have a cross table at hand
+        field_start_row = find_data_field_start(sheet[progress_struct.first_find.row])
+        field_start_column = find_data_field_start(sheet[progress_struct.opposite_find.column])
+        cross_area = "{}{}".format(field_start_column, field_start_row)
+        top_area_template = "{}${}"
+        side_area_template = "${}{}"
+        if progress_struct.first_position_represents_value():
+            value_area = side_area_template.format(progress_struct.first_find.column, progress_struct.first_find.row)
+            name_area = top_area_template.format(progress_struct.opposite_find.column,
+                                                 progress_struct.opposite_find.row)
+        else:
+            value_area = top_area_template.format(progress_struct.opposite_find.column,
+                                                  progress_struct.opposite_find.row)
+            name_area = side_area_template.format(progress_struct.first_find.column, progress_struct.first_find.row)
+        final_path = "{}/{}/@{};{};{}".format(path, sheet.title, cross_area, value_area, name_area)
+        self.__classifier.add_potential_match(final_path)
 
     def _follow_forward_to(self, file_name: str, work_path: str,
                            testing_struct: CellMatchingStruct) -> CellPositionStruct:
@@ -431,7 +419,7 @@ class XlsxProcessor:
             :param to_check: the cell to check for coloring
             :return: true if the colors match else false
             """
-            return to_check.fill.bgColor.rgb == header_color or to_check.fill.fgColor.rgb == header_color
+            return XlsxProcessor.__get_cell_color(to_check) == header_color
 
         if value_name_pairs is None:
             value_name_pairs = []
@@ -480,6 +468,16 @@ class XlsxProcessor:
         if is_header:
             return CellPositionStruct.create_header_found(CellPosition.create_invalid())
         return CellPositionStruct.create_no_find()
+
+    @staticmethod
+    def __get_cell_color(cell: Cell) -> str:
+        """
+        Returns the background color of the cell given
+
+        :param cell: the cell in question
+        :return: the ARGB of the cell color as string
+        """
+        return cell.fill.start_color.index
 
     @staticmethod
     def __extract_cell_properties(to_extract_from: Cell) -> Dict[str, CellPropertyType]:
