@@ -29,7 +29,7 @@ class CrossTableStruct:
         self.first_find = CellPosition.create_invalid()
         self.opposite_find = CellPosition.create_invalid()
 
-    def check_for_other_pair_values(self, to_check: Iterator[Cell]) -> bool:
+    def find_other_pair_values_in(self, to_check: Iterator[Cell]) -> bool:
         """
         Checks if the given cell collection contains enough samples of from either the values list or the name list
         depending on what was found with the call of values_exist_in()
@@ -43,6 +43,9 @@ class CrossTableStruct:
         for cell in to_check:
             if cell.value in work:
                 work.remove(cell.value)
+                # housekeeping
+                if cell.value == self.__opposite_value:
+                    self.opposite_find = CellPosition.create_from(cell)
         if len(work) <= (1 - self.REQUIRED_SUCCESS_RATE) * len(self.__opposite_list):
             return True
         return False
@@ -56,6 +59,16 @@ class CrossTableStruct:
         :return: true if the value matches the expected value else false
         """
         return to_check.value == self.__opposite_value
+
+    def get_sample_size(self) -> int:
+        """
+        Returns how many data points are used to detect a cross table
+
+        :return: the count of value-name pairs
+        """
+        if not self.__opposite_list:
+            return -1
+        return len(self.__opposite_list)
 
     @staticmethod
     def values_exist_in(to_scan: Iterator[Cell], to_find: Iterator[ValueNamePair]) -> Tuple[bool, CrossTableStruct]:
