@@ -188,59 +188,6 @@ class XlsxProcessor:
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given
         :param path: the path to the current sheet (excluding the sheet itself)
         """
-        # in a cross table everything should just stand in the table: so check if the values or the pairs can be found
-        # in a column and go from there
-        def check_line_for_list_entries(line: List[Cell], to_find: Iterator[str]) -> (bool, int):
-            """
-            Checks if the given column or row does contain at least 50% of the entries from the "list" given. If so true
-            is returned as the index of the first match
-
-            :param line: the column or row to search for a value of to_find
-            :param to_find: a list of values which to be hoped to be found in the column
-            :return: if a match could be found and at which index
-            """
-            # create a working copy
-            work = list(to_find)
-            start_len = float(len(work))
-            earliest_hit = 1000
-            for cell in line:
-                if cell.value is None:
-                    continue
-                current_val = cell.value
-                if current_val in work:
-                    work.remove(current_val)
-                    if cell.row < earliest_hit:
-                        earliest_hit = cell.row
-            if float(len(work)) / start_len <= 0.5:
-                # if more about 50% could be found it can be assumed that it makes sense to continue
-                return True, earliest_hit
-            return False, -1
-
-        def find_name_in_col(column: Iterator[Cell], to_find: str) -> CellPosition:
-            """
-            Goes through the given column and returns the cell the value was found in else None
-
-            :param column: the column to search for the keyword
-            :param to_find: the keyword to find as value in one of the cells
-            :return: the row index the value was found in
-            """
-            for cell in column:
-                if cell.value == to_find:
-                    return CellPosition.create_from(cell)
-            return CellPosition.create_invalid()
-
-        def find_x(start_index: int) -> CellPosition:
-            """
-            Returns the first cell in which a "x" could be found starting from the row index given
-            :param start_index: from which index to start looking for a x
-            :return: the first cell that contains a x
-            """
-            for row in sheet.iter_rows(min_row=start_index):
-                row_cell: Cell
-                for row_cell in row:
-                    if row_cell.value == "x" or row_cell.value == "X":
-                        return CellPosition.create_from(row_cell)
-            return CellPosition.create_invalid()
 
         def find_xs(start_row: int, how_many: int) -> bool:
             """
@@ -310,15 +257,8 @@ class XlsxProcessor:
                         return CellPosition.create_from(cell)
             return CellPosition.create_invalid()
 
-        def value_of(position: CellPosition) -> str:
-            """
-            Returns the cell content at the given position
-
-            :param position: where to extract the value from
-            :return: the value of the cell
-            """
-            return sheet["{}{}".format(position.column, position.row)].value
-
+        # in a cross table everything should just stand in the table: so check if the values or the pairs can be found
+        # in a column and go from there
         success, progress_struct = scan_columns_for_list(value_name_pairs)
         if not success:
             return
@@ -334,19 +274,17 @@ class XlsxProcessor:
             # no cross table after all
             return
         # if this line has been reached it is safe to assume to have a cross table at hand
-        field_start_row = find_data_field_start(sheet[progress_struct.first_find.row])
-        field_start_column = find_data_field_start(sheet[progress_struct.opposite_find.column])
-        cross_area = "{}{}".format(field_start_column, field_start_row)
+        field_start_side = find_data_field_start(sheet[progress_struct.first_find.row])
+        field_start_top = find_data_field_start(sheet[progress_struct.opposite_find.column])
+        cross_area = "{}{}".format(field_start_side.column, field_start_top.row)
         top_area_template = "{}${}"
         side_area_template = "${}{}"
         if progress_struct.first_position_represents_value():
-            value_area = side_area_template.format(progress_struct.first_find.column, progress_struct.first_find.row)
-            name_area = top_area_template.format(progress_struct.opposite_find.column,
-                                                 progress_struct.opposite_find.row)
+            value_area = side_area_template.format(progress_struct.first_find.column, field_start_top.row)
+            name_area = top_area_template.format(field_start_side.column, progress_struct.opposite_find.row)
         else:
-            value_area = top_area_template.format(progress_struct.opposite_find.column,
-                                                  progress_struct.opposite_find.row)
-            name_area = side_area_template.format(progress_struct.first_find.column, progress_struct.first_find.row)
+            value_area = top_area_template.format(field_start_side.column, progress_struct.opposite_find.row)
+            name_area = side_area_template.format(progress_struct.first_find.column, field_start_top.row)
         final_path = "{}/{}/@{};{};{}".format(path, sheet.title, cross_area, value_area, name_area)
         self.__classifier.add_potential_match(final_path)
 
