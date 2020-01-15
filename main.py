@@ -33,7 +33,7 @@ if __name__ == "__main__":
     if shall_generate_base == "y" or shall_generate_base == "Y":
         # means to generate the json files from stock
         # worker_cnt = int(input("How many workers should be generated?"))
-        worker_cnt = 10
+        worker_cnt = 20
         generate_json(worker_cnt)
     elif shall_generate_base == "n" or shall_generate_base == "N":
         # pass here to cover all other inputs with the else branch
