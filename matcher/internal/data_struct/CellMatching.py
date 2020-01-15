@@ -45,8 +45,8 @@ class CellMatchingStruct:
                 # check if the value is **in** the value rather then for equality for higher flexibility
                 # -> if types can be distinguished (by extracting them from eg. the XML-Schema) it would make more sense
                 # to check numerical values vor equality or double values for a certain count of digits
-                if entry.value == value and entry.name == value:
-                    # there's no way of telling if it is the name or the value -> just abort
+                if entry.value == entry.name:
+                    # there's no way of telling if it is the name or the value which will hit -> just abort
                     return CellMatchResult.NO_FINDING
                 elif entry.value == value:
                     self.__expected = entry.name
