@@ -148,6 +148,8 @@ class Creator:
         self._create_team_xlsx_file(target_dir + section_dir + "{name}.xlsx", 2, 2)
         # as all now use the same sheet title store the color only once
         self.__config["header_{}".format(self.TEAM_SHEET_NAME)] = "FFFFFF66"
+        # and allow the size of the cell only for the team sheets as well
+        self.__config["width_only_in"] = self.TEAM_SHEET_NAME
 
     def create_xml(self, file_name: str) -> None:
         """

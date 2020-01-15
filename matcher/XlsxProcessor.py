@@ -20,6 +20,7 @@ class XlsxProcessor:
 
     FORWARDING_KEY = "forwarding_on"
     FORWARDING_PATH_KEY = "path_forward_symbol"
+    WIDTH_USAGE_LIMITER = "width_only_in"
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
     TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
 
@@ -410,7 +411,7 @@ class XlsxProcessor:
                 value_position = result.value_position
                 value_path = result.value_path
             else:
-                cell_data = XlsxProcessor.__extract_cell_properties(cell, sheet)
+                cell_data = self.__extract_cell_properties(cell, sheet)
                 for data in cell_data.keys():
                     result = result_struct.test_value(data)
                     if result == CellMatchResult.NAME_FOUND:
@@ -442,8 +443,7 @@ class XlsxProcessor:
         """
         return cell.fill.start_color.index
 
-    @staticmethod
-    def __extract_cell_properties(to_extract_from: Cell, sheet: Worksheet) -> Dict[str, CellPropertyType]:
+    def __extract_cell_properties(self, to_extract_from: Cell, sheet: Worksheet) -> Dict[str, CellPropertyType]:
         """
         Takes the cell an creates a list of properties from it
 
@@ -464,10 +464,11 @@ class XlsxProcessor:
                     # as merged cells only expand in columns
                     return merged_cells.max_col - merged_cells.min_col + 1
             return 1
-        return {
-            to_extract_from.value: CellPropertyType.CONTENT,
-            str(get_cell_size(to_extract_from)): CellPropertyType.WIDTH
-        }
+        to_return = {to_extract_from.value: CellPropertyType.CONTENT}
+        if self.WIDTH_USAGE_LIMITER not in self.__config or sheet.title in self.__config[self.WIDTH_USAGE_LIMITER]:
+            # then add the width property
+            to_return[str(get_cell_size(to_extract_from))] = CellPropertyType.WIDTH
+        return to_return
 
     @staticmethod
     def __to_linear_cell_address(is_fixed_row: bool, col: str, row: int, property_identifier: CellPropertyType) -> str:
