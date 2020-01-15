@@ -59,8 +59,9 @@ class BinCollection:
         max_val = -1
         max_idx = 0
         if not self.__match_bins:
-            logging.warning(NoMatchCandidateException("Could not match path '{}' to any path in the sink file".format(
+            logging.error(NoMatchCandidateException("Could not match path '{}' to any path in the sink file".format(
                 self.get_key())))
+            return "", False
         for i in range(len(self.__match_bins)):
             if self.__match_bins[i] > max_val:
                 max_val = self.__match_bins[i]
@@ -78,22 +79,6 @@ class BinCollection:
         :return: the path of the source value
         """
         return self.__source_path
-
-    # def get_potential_paths(self) -> List[str]:
-    #     """
-    #     Returns all the path registered from the sink file
-    #
-    #     :return: a list of path which were associated with the source path
-    #     """
-    #     return list(self.__matched_paths)
-    #
-    # def get_bins(self) -> List[int]:
-    #     """
-    #     Returns the bins for the match count
-    #
-    #     :return: a list of integers which indicate how often the bin was incremented
-    #     """
-    #     return list(self.__match_bins)
 
     def to_tuple(self) -> Tuple[str, List[Tuple[str, int]]]:
         """

@@ -68,7 +68,7 @@ class BinClassifier:
         for path_bin in self.__mat:
             path, success = path_bin.get_highest_match()
             if not success:
-                logging.warning(MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
+                logging.error(MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
                     path_bin.get_key())))
             self.__result_buffer[path] = path_bin.get_key()
 
