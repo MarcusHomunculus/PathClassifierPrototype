@@ -34,7 +34,7 @@ class XmlProcessor:
             current: Tuple[str, List[ValueNamePair]] = self.__targets.pop()
             if not len(current[1]):
                 raise AssertionError("Should not register path '{}' without any value-name pairs".format(current[0]))
-            self.__classifier.add_source_path(current[0])
+            self.__classifier.add_source_path(self._replace_indexes(current[0]))
             return current[1]
         except IndexError:
             raise StopIteration
@@ -77,6 +77,36 @@ class XmlProcessor:
                 values = self._path_to_xml_values(new_path, parent_node)
                 self.__targets.append((new_path, ValueNamePair.zip(values, ids)))
 
+        def iterate_by_index(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
+            """
+            Iterates through the child nodes of the given node supported by an index which is useful if all nodes carry
+            the same name
+
+            :param node: the node of which the children shall be analyzed
+            :param current_path: the current path for the classifier
+            :param ids: the list of URIs
+            """
+            # the indexing starts with 1: https://docs.python.org/3.8/library/xml.etree.elementtree.html#example
+            child_index = 1
+            for child_node in node:
+                process_node(child_node, current_path + "/{}[{}]".format(child_node.tag, child_index), ids)
+                child_index += 1
+
+        def iterate_by_name(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
+            """
+            Iterates over the children of the node assuming that they're all unique in their name under their siblings
+
+            :param node: the node of which the children shall be analyzed
+            :param current_path: the current path for the classifier
+            :param ids: the list of URIs
+            """
+            for child_node in node:
+                name = child_node.tag
+                if name == self._get_universal_id():
+                    # makes no sense to search for pairs of the same two names
+                    continue
+                process_node(child_node, current_path + "/{}".format(name), ids)
+
         def process_node(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
             """
             Checks the given node for a value and attributes and forwards them to the function matching them to their
@@ -91,17 +121,13 @@ class XmlProcessor:
                 self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
             if node.attrib:
                 process_attributes(node, current_path, ids)
-            # check if the child nodes have all the same name -> actually just pick the first 2 and assume the rest
-            for child_node in node:
-                name = child_node.tag
-                if name == self._get_universal_id():
-                    # makes no sense to search for pairs of the same two names
-                    continue
-                process_node(child_node, current_path + "/{}".format(name), ids)
-
-        def process_index_node(node: ElemTree.Element, current_path: str, index: int, ids: List[str]) -> None:
-            # TODO: write some nice docu here
-            pass
+            needs_indexing = XmlProcessor._has_same_name_children(node)
+            # continue with going down deeper the tree -> if things get more complicated wrap these in separate
+            # functions
+            if needs_indexing:
+                iterate_by_index(node, current_path, ids)
+            else:
+                iterate_by_name(node, current_path, ids)
 
         # get an overview about the targets to find
         identifier_list = list(map(lambda x: x.text, parent_node.findall(".//{}".format(self._get_universal_id()))))
@@ -162,11 +188,11 @@ class XmlProcessor:
         return values
 
     @staticmethod
-    def has_same_name_children(to_test: ElemTree.Element) -> bool:
+    def _has_same_name_children(to_test: ElemTree.Element) -> bool:
         """
         Iterates over the child nodes of the given node and checks if they have the same (tag-) name. It is assumed
-        that nodes have either only different names or all carry the same name (pretty sure that this is mandated by
-        the XML standard?!)
+        that nodes have either only different names or all carry the same name (this is **only** true for the mock
+        data)
 
         :param to_test: the node to test for it's child names
         :return: True if children have a same name else False
@@ -176,8 +202,18 @@ class XmlProcessor:
             name_list.append(child_node.tag)
         if len(name_list) < 2:
             return False
-        # check all names if they have the same name -> actually just test the first 2 and assume the rest
+        # check if the child nodes have all the same name -> actually just pick the first 2 and assume the rest
         if name_list[0] != name_list[1]:
             return False
         return True
 
+    @staticmethod
+    def _replace_indexes(path_str: str) -> str:
+        """
+        Replaces all occurrences of an integer index with a general / abstract indexing notation ('[i]') and returns the
+        result
+
+        :param path_str: the path to check for integer indexes
+        :return: the "clean" path only holding abstract indexes if any at all
+        """
+        return re.sub(r"\[\d.?]", "[i]", path_str)
