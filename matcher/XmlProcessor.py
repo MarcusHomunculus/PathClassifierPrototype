@@ -118,7 +118,9 @@ class XmlProcessor:
             """
             if not node.text.isspace():
                 values = self._path_to_xml_values(current_path, parent_node)
-                self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
+                if len(values) == len(ids):
+                    # if not enough values are available a meaningful matching is not possible anymore
+                    self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
             if node.attrib:
                 process_attributes(node, current_path, ids)
             needs_indexing = XmlProcessor._has_same_name_children(node)
