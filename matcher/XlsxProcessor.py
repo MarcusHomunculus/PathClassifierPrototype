@@ -76,7 +76,7 @@ class XlsxProcessor:
                 invalid / empty struct
         """
         current_sheet_path = "{}/{}".format(path, sheet.title)
-        lowest_header_row: int = 0
+        lowest_header_row = -1
         forward_index = -1
         handle_forwarding, forwarding_column_name = self.__includes_forwarding(sheet.title)
         color_key = "header_{}".format(sheet.title)
@@ -99,7 +99,7 @@ class XlsxProcessor:
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
-                if lowest_header_row < 1:
+                if lowest_header_row < 0:
                     # probably wrong orientation
                     return CellPositionStruct.create_no_find()
                 # add the final piece to the path
@@ -107,6 +107,9 @@ class XlsxProcessor:
                                                                    lowest_header_row + 1,
                                                                    result.value_position.read_type)
                 return result
+            elif lowest_header_row < 0:
+                # means no header has been found
+                continue
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
@@ -143,7 +146,7 @@ class XlsxProcessor:
                 invalid / empty struct
         """
         current_sheet_path = "{}/{}".format(path, sheet.title)
-        lowest_header_col: int = 0
+        lowest_header_col = -1
         forward_index = -1
         handle_forwarding, forwarding_row_name = self.__includes_forwarding(sheet.title)
         header_color = self.__config["header_{}".format(sheet.title)]
@@ -162,13 +165,16 @@ class XlsxProcessor:
             if result.match_struct.success_type == CellMatchResult.VALUE_FOUND and check_for_value_only:
                 # only a value has been found -> forward the information to the caller -> but if no header has been
                 # found the orientation is probably bogus
-                if lowest_header_col < 1:
+                if lowest_header_col < 0:
                     # probably wrong orientation
                     return CellPositionStruct.create_no_find()
                 result.value_path += self.__to_linear_cell_address(True, get_column_letter(lowest_header_col + 1),
                                                                    result.value_position.row,
                                                                    result.value_position.read_type)
                 return result
+            elif lowest_header_col < 0:
+                # means no header has been found
+                continue
             elif result.match_struct.success_type != CellMatchResult.ALL_FOUND:
                 # this case shouldn't exist in reality yet cover it to be on the safe side
                 continue
