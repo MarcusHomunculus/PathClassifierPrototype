@@ -91,6 +91,7 @@ class XmlProcessor:
                 self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
             if node.attrib:
                 process_attributes(node, current_path, ids)
+            # check if the child nodes have all the same name -> actually just pick the first 2 and assume the rest
             for child_node in node:
                 name = child_node.tag
                 if name == self._get_universal_id():
@@ -98,12 +99,33 @@ class XmlProcessor:
                     continue
                 process_node(child_node, current_path + "/{}".format(name), ids)
 
+        def process_index_node(node: ElemTree.Element, current_path: str, index: int, ids: List[str]) -> None:
+            # TODO: write some nice docu here
+            pass
+
         # get an overview about the targets to find
         identifier_list = list(map(lambda x: x.text, parent_node.findall(".//{}".format(self._get_universal_id()))))
         if len(identifier_list) < 1:
             raise AssertionError("No name extracted! Maybe wrong URI value in config file: " + self._get_universal_id())
         # use the first node as blue-print
         process_node(parent_node[0], "{}/{}".format(parent_node.tag, parent_node[0].tag), identifier_list)
+
+    def _get_universal_id(self):
+        """
+        Returns the identifier which is used to distinguish the main nodes from each other
+
+        :return: the identifier which can be used for matching
+        """
+        return self.__config["uri"]
+
+    def _get_main_node_names(self) -> List[str]:
+        """
+        Extracts the names of the anchor nodes in the XML from the config
+
+        :return: an iterable of the nodes which should be trained
+        """
+        raw_list = self.__config["List_nodes"]
+        return raw_list.split(",")
 
     @staticmethod
     def _path_to_xml_values(path: str, root_node: ElemTree.Element) -> List[str]:
@@ -115,7 +137,7 @@ class XmlProcessor:
         :param root_node: the node which contains the list of nodes eg. the node which is equivalent to the root of path
         :return: all values of the nodes or attributes under the given path
         """
-        # as the path model is similar to XPath: just it
+        # as the path model is similar to XPath: so just use it
         result = re.search(r"(?<=@)\w*$", path)
         # cut away the root node
         root_end = path.index("/")
@@ -139,19 +161,23 @@ class XmlProcessor:
                 values.append(node.attrib[attribute_name])
         return values
 
-    def _get_universal_id(self):
+    @staticmethod
+    def has_same_name_children(to_test: ElemTree.Element) -> bool:
         """
-        Returns the identifier which is used to distinguish the main nodes from each other
+        Iterates over the child nodes of the given node and checks if they have the same (tag-) name. It is assumed
+        that nodes have either only different names or all carry the same name (pretty sure that this is mandated by
+        the XML standard?!)
 
-        :return: the identifier which can be used for matching
+        :param to_test: the node to test for it's child names
+        :return: True if children have a same name else False
         """
-        return self.__config["uri"]
+        name_list = []
+        for child_node in to_test:
+            name_list.append(child_node.tag)
+        if len(name_list) < 2:
+            return False
+        # check all names if they have the same name -> actually just test the first 2 and assume the rest
+        if name_list[0] != name_list[1]:
+            return False
+        return True
 
-    def _get_main_node_names(self) -> List[str]:
-        """
-        Extracts the names of the anchor nodes in the XML from the config
-
-        :return: an iterable of the nodes which should be trained
-        """
-        raw_list = self.__config["List_nodes"]
-        return raw_list.split(",")
