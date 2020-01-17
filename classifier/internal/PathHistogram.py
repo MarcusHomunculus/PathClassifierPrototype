@@ -4,7 +4,7 @@ import logging
 from classifier.error.MatchExceptions import NoMatchCandidateException
 
 
-class BinCollection:
+class PathHistogram:
 
     __source_path: str
     __matched_paths: List[str]

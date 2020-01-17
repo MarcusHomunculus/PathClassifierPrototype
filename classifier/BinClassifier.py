@@ -1,13 +1,13 @@
 from typing import List, Dict, Tuple
 import logging
 
-from classifier.internal.BinCollection import BinCollection
+from classifier.internal.PathHistogram import PathHistogram
 from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
 
 
 class BinClassifier:
 
-    __mat: List[BinCollection]
+    __mat: List[PathHistogram]
     __last_source: str
     __result_buffer: Dict[str, str]
 
@@ -34,7 +34,7 @@ class BinClassifier:
                 self.__last_source = source
                 return
         # else it is a new path
-        self.__mat.append(BinCollection(source))
+        self.__mat.append(PathHistogram(source))
         self.__last_source = source
 
     def get_active_source_path(self):
@@ -65,12 +65,37 @@ class BinClassifier:
         """
         Performs the learning / matching based on the data received previously
         """
-        for path_bin in self.__mat:
-            path, success = path_bin.get_highest_match()
+        for path_histogram in self.__mat:
+            path, success = path_histogram.get_highest_match()
             if not success:
                 logging.error(MultipleMatchingCandidatesException("Found matches with same count for path {}".format(
-                    path_bin.get_key())))
-            self.__result_buffer[path] = path_bin.get_key()
+                    path_histogram.get_key())))
+            # store in reverse order as the idea is to have a translation from the sink to the source -> source shall be
+            # generated
+            self.__result_buffer[path] = path_histogram.get_key()
+
+    def get_final_sink_paths(self) -> List[str]:
+        """
+        Returns the list of selected sink paths from the training step
+
+        :return: all sink paths which were selected for their source path matching
+        """
+        return list(self.__result_buffer.keys())
+
+    def get(self, sink_path: str, return_empty_if_no_match: bool = False) -> str:
+        """
+        Allows to receive the source path to the matched sink path in a dictionary-like fashion.
+
+        :param sink_path: the path for which the source path is wanted for
+        :param return_empty_if_no_match: set this flag if an empty string shall be returned instead of an KeyError
+        :return: the source path to the given sink path (if it was selected as match for it)
+        """
+        result = self.__result_buffer.get(sink_path)
+        if result is not None:
+            return result
+        if result is None and return_empty_if_no_match:
+            return ""
+        raise KeyError("Path '{}' is not registered with classifier".format(sink_path))
 
     def dump_raw_data(self) -> List[Tuple[str, List[Tuple[str, int]]]]:
         """
