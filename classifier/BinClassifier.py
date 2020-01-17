@@ -97,6 +97,14 @@ class BinClassifier:
             return ""
         raise KeyError("Path '{}' is not registered with classifier".format(sink_path))
 
+    def to_dict(self) -> Dict[str, str]:
+        """
+        Returns the sink-source-path-mapping as a dictionary
+
+        :return: a dictionary from sink-paths to source paths
+        """
+        return dict(self.__result_buffer)
+
     def dump_raw_data(self) -> List[Tuple[str, List[Tuple[str, int]]]]:
         """
         Dumps the classifiers matrix as a list of rows
