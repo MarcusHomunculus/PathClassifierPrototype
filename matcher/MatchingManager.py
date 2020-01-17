@@ -29,6 +29,10 @@ class MatchingManager:
         # digest the whole pile of data
         self.__classifier.train()
 
+    def generate(self, new_file_path: str, sink_path: str, nested_sink_dir: str = ""):
+        # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
+        target_paths = XmlProcessor.sort_target_paths(self.__classifier.get_final_sink_paths())
+
     @staticmethod
     def __read_config(path_to_file: str) -> Dict[str, str]:
         """

@@ -56,6 +56,13 @@ class XmlProcessor:
         # advertise as iterator for lists of value-name-pairs
         return self
 
+    def write_xml(self, path_to_file: str) -> None:
+        pass
+
+    @staticmethod
+    def sort_target_paths(old_list: List[str]) -> List[str]:
+        pass
+
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
         """
         Goes through the child list of the given node and treats them as master: meaning that the classifier will treat
