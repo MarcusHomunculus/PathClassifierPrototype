@@ -3,8 +3,8 @@ from typing import List, Iterator, Tuple
 from openpyxl.cell import Cell
 from enum import Enum
 
-from matcher.internal.data_struct.ValueNamePair import ValueNamePair
-from matcher.internal.data_struct.CellPositioning import CellPosition
+from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.xlsx.location.CellPositioning import CellPosition
 
 
 class CrossTableStruct:

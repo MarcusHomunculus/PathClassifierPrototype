@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import List, Iterator
 
-from matcher.internal.data_struct.ValueNamePair import ValueNamePair
+from matcher.shared.ValueNamePair import ValueNamePair
 
 
 class CellMatchResult(IntEnum):

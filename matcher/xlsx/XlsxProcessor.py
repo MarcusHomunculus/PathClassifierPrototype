@@ -7,13 +7,13 @@ from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter, column_index_from_string
 
-from matcher.internal.enum.CellPropertyType import CellPropertyType
-from matcher.internal.data_struct.CellMatching import CellMatchingStruct, CellMatchResult
-from matcher.internal.data_struct.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
+from matcher.enum.CellPropertyType import CellPropertyType
+from matcher.xlsx.clustering.CellMatching import CellMatchingStruct, CellMatchResult
+from matcher.xlsx.location.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import ForwardFileNotFound
-from matcher.internal.data_struct.ValueNamePair import ValueNamePair
-from matcher.internal.data_struct.CrossTableStruct import CrossTableStruct
+from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.xlsx.clustering.CrossTableStruct import CrossTableStruct
 
 
 class XlsxProcessor:
@@ -209,7 +209,7 @@ class XlsxProcessor:
     def _check_as_cross_table(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair], path: str) -> None:
         """
         Iterates through the sheet and tries to determine if the sheet could contain a cross table where names and
-        values are distributed along a column and a row and their matching is indicated by a 'X' in the field below
+        values are distributed along a column and a row and their clustering is indicated by a 'X' in the field below
 
         :param sheet: the sheet to search for matches
         :param value_name_pairs: the stuff (hopefully) to find in the sheet given

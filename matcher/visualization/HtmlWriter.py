@@ -24,7 +24,7 @@ class HtmlWriter:
             """
             Returns the content of the given htm-template as string
             """
-            with open("matcher/internal/templates/{}.htm".format(name), "r") as template_file:
+            with open("matcher/visualization/templates/{}.htm".format(name), "r") as template_file:
                 return template_file.read()
 
         def assign_bin_class(current_bin: int, max_bin: int) -> str:

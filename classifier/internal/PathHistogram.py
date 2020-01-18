@@ -51,7 +51,7 @@ class PathHistogram:
     def get_highest_match(self) -> (str, bool):
         """
         Returns the path with the highest match count and if the match count is unique within the container. If this is
-        not true the matching can be assumed to have failed
+        not true the clustering can be assumed to have failed
 
         :return: the path with the highest match count and if this count was unique
         """

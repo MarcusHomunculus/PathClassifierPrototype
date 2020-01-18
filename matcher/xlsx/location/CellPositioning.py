@@ -2,8 +2,8 @@ from __future__ import annotations
 from openpyxl.cell.cell import Cell
 from enum import IntEnum
 
-from matcher.internal.enum.CellPropertyType import CellPropertyType
-from matcher.internal.data_struct.CellMatching import CellMatchingStruct
+from matcher.enum.CellPropertyType import CellPropertyType
+from matcher.xlsx.clustering.CellMatching import CellMatchingStruct
 
 
 class CellPositionStructType(IntEnum):
@@ -93,7 +93,7 @@ class CellPositionStruct:
         :param forward_position: the position of the forwarding column or row
         :return: an instance representing a header (which in itself) is only of importance for were to start reading
         """
-        # instantiate an empty matching struct with no list -> use the name member to transport the forward index
+        # instantiate an empty clustering struct with no list -> use the name member to transport the forward index
         return CellPositionStruct(CellPositionStructType.HEADER_FOUND, CellMatchingStruct([], True),
                                   CellPosition.create_invalid(), forward_position, "")
 

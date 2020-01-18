@@ -2,9 +2,9 @@ from typing import Dict
 import toml
 import logging
 
-from matcher.XlsxProcessor import XlsxProcessor
-from matcher.XmlProcessor import XmlProcessor
-from matcher.internal.debug.HtmlWriter import HtmlWriter
+from matcher.xlsx.XlsxProcessor import XlsxProcessor
+from matcher.xml.XmlProcessor import XmlProcessor
+from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 
 
@@ -19,7 +19,7 @@ class MatchingManager:
     __nested_sink_dir: str
     __template_path: str
 
-    def __init__(self, config_path: str, log_file: str = "matching.log"):
+    def __init__(self, config_path: str, log_file: str = "clustering.log"):
         # TODO: here's some docu missing
         self.__classifier = BinClassifier()
         self.__config = self.__read_config(config_path)

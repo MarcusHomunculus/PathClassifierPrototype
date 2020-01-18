@@ -103,7 +103,7 @@ class Creator:
             else:
                 raise AttributeError(
                     "No implementation to push {} to the internal members".format(t))
-        # continue with matching sections with workers
+        # continue with clustering sections with workers
         self.__assign()
 
     def create_xlsx(self, target_dir: str = "../", main_file_name: str = "data.xlsx",
@@ -403,7 +403,7 @@ class Creator:
             active.fill = worker_fill
             active.border = header_border
             current_row += 1
-        # now insert the matching data
+        # now insert the clustering data
         cross_space_fill = PatternFill(start_color='FFFFFF66', end_color='FFFFFF66', fill_type='solid')
         cross_space_border = Border(right=Side(style='thin'), bottom=Side(style='thin'))
         field_row = start_row + offset_row + 1

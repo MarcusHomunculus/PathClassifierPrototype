@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from matcher.internal.Constant import Constant
+from matcher.immutability.Constant import Constant
 
 
 # Moved to dedicated file as using it as nested class made more trouble then it was worth it

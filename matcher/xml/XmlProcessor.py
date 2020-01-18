@@ -4,8 +4,8 @@ import re
 import xml.etree.ElementTree as ElemTree
 
 from classifier.BinClassifier import BinClassifier
-from matcher.internal.data_struct.ValueNamePair import ValueNamePair
-from matcher.internal.data_struct.GeneratorStruct import GeneratorStruct
+from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.xml.generation.GeneratorStruct import GeneratorStruct
 
 
 class XmlProcessor:
@@ -33,7 +33,7 @@ class XmlProcessor:
         return self
 
     def __next__(self) -> List[ValueNamePair]:
-        # use a stack scheme as order is not relevant for the matching
+        # use a stack scheme as order is not relevant for the clustering
         # -> switch to a generator in a "proper" implementation
         try:
             current: Tuple[str, List[ValueNamePair]] = self.__targets.pop()
@@ -49,7 +49,7 @@ class XmlProcessor:
         Performs the parsing process of the given XML and prepares a list of value-name pair lists that can be pulled
         from the returned iterator
 
-        :param path_to_source: the path to the xml file to read from (for matching)
+        :param path_to_source: the path to the xml file to read from (for clustering)
         :return: an iterator returning lists of value-name pairs list by list
         """
         self.__source_path = path_to_source
@@ -132,7 +132,7 @@ class XmlProcessor:
 
         def process_node(node: ElemTree.Element, current_path: str, ids: List[str]) -> None:
             """
-            Checks the given node for a value and attributes and forwards them to the function matching them to their
+            Checks the given node for a value and attributes and forwards them to the function clustering them to their
             counterpart in the xlsx. If the node contains child-nodes it processes recursively
 
             :param node: the node to extract the data (and children) from
@@ -142,7 +142,7 @@ class XmlProcessor:
             if not node.text.isspace():
                 values = self._path_to_xml_values(current_path, parent_node)
                 if len(values) == len(ids):
-                    # if not enough values are available a meaningful matching is not possible anymore
+                    # if not enough values are available a meaningful clustering is not possible anymore
                     self.__targets.append((current_path, ValueNamePair.zip(values, ids)))
             if node.attrib:
                 process_attributes(node, current_path, ids)
@@ -165,7 +165,7 @@ class XmlProcessor:
         """
         Returns the identifier which is used to distinguish the main nodes from each other
 
-        :return: the identifier which can be used for matching
+        :return: the identifier which can be used for clustering
         """
         return self.__config["uri"]
 

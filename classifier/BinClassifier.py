@@ -63,7 +63,7 @@ class BinClassifier:
 
     def train(self) -> None:
         """
-        Performs the learning / matching based on the data received previously
+        Performs the learning / clustering based on the data received previously
         """
         for path_histogram in self.__mat:
             path, success = path_histogram.get_highest_match()
@@ -78,7 +78,7 @@ class BinClassifier:
         """
         Returns the list of selected sink paths from the training step
 
-        :return: all sink paths which were selected for their source path matching
+        :return: all sink paths which were selected for their source path clustering
         """
         return list(self.__result_buffer.keys())
 
