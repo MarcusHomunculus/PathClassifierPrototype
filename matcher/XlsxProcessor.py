@@ -63,6 +63,15 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
+    def get_names(self, data_paths: Iterator[str]) -> Iterator[str]:
+        # TODO: I need some docu here
+        # TODO: extract the name paths from the data_paths and assemble a name list from them -> a main node type separation is required for that
+        pass
+
+    def receive_for_path(self, path: str, name: str) -> str:
+        # TODO: doc me
+        pass
+
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
                         path: str, check_for_value_only: bool = False) -> CellPositionStruct:
         """
@@ -433,16 +442,6 @@ class XlsxProcessor:
             return CellPositionStruct.create_value_found(result_struct, value_position, value_path)
         return CellPositionStruct.create_no_find()
 
-    @staticmethod
-    def __get_cell_color(cell: Cell) -> str:
-        """
-        Returns the background color of the cell given
-
-        :param cell: the cell in question
-        :return: the ARGB of the cell color as string
-        """
-        return cell.fill.start_color.index
-
     def __extract_cell_properties(self, to_extract_from: Cell, sheet: Worksheet) -> Dict[str, CellPropertyType]:
         """
         Takes the cell an creates a list of properties from it
@@ -469,6 +468,16 @@ class XlsxProcessor:
             # then add the width property
             to_return[str(get_cell_size(to_extract_from))] = CellPropertyType.WIDTH
         return to_return
+
+    @staticmethod
+    def __get_cell_color(cell: Cell) -> str:
+        """
+        Returns the background color of the cell given
+
+        :param cell: the cell in question
+        :return: the ARGB of the cell color as string
+        """
+        return cell.fill.start_color.index
 
     @staticmethod
     def __to_linear_cell_address(is_fixed_row: bool, col: str, row: int, property_identifier: CellPropertyType) -> str:
