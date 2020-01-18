@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import List, Iterator
 
-from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.clustering.ValueNamePair import ValueNamePair
 
 
 class CellMatchResult(IntEnum):

@@ -12,7 +12,7 @@ from matcher.xlsx.clustering.CellMatching import CellMatchingStruct, CellMatchRe
 from matcher.xlsx.location.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
 from classifier.BinClassifier import BinClassifier
 from classifier.error.MatchExceptions import ForwardFileNotFound
-from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xlsx.clustering.CrossTableStruct import CrossTableStruct
 
 

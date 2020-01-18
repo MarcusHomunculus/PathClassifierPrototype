@@ -4,7 +4,7 @@ import re
 import xml.etree.ElementTree as ElemTree
 
 from classifier.BinClassifier import BinClassifier
-from matcher.shared.ValueNamePair import ValueNamePair
+from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xml.generation.GeneratorStruct import GeneratorStruct
 
 
