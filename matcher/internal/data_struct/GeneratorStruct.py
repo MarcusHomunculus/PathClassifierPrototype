@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import re
 
 
@@ -55,3 +55,8 @@ class GeneratorStruct:
             return re.search(r"^\w+/\w+\b", to_extract_from).group(1)
         except AttributeError:
             raise AttributeError("Path seems to violate the path structure: {}".format(to_extract_from))
+
+    @staticmethod
+    def __paths_match_up_to(to_check: str, to_check_against: str) -> Tuple[int, int]:
+        # TODO: doc me -> first is how far they match; 2nd is how much "difference" is left
+        pass

@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import List, Tuple, Dict, Iterator
+from typing import List, Tuple, Dict, Iterator, Set
 import re
 import xml.etree.ElementTree as ElemTree
 
 from classifier.BinClassifier import BinClassifier
 from matcher.internal.data_struct.ValueNamePair import ValueNamePair
+from matcher.internal.data_struct.GeneratorStruct import GeneratorStruct
 
 
 class XmlProcessor:
@@ -12,6 +13,8 @@ class XmlProcessor:
     __classifier: BinClassifier
     __config: Dict[str, str]
     __targets: List[(str, List[ValueNamePair])]
+    __source_path: str
+    __name_nodes: Set[str]
 
     def __init__(self, sink: BinClassifier, config: Dict[str, str]):
         """
@@ -23,6 +26,8 @@ class XmlProcessor:
         self.__classifier = sink
         self.__config = config
         self.__targets = []
+        self.__source_path = ""
+        self.__name_nodes = set()
 
     def __iter__(self) -> XmlProcessor:
         return self
@@ -47,7 +52,8 @@ class XmlProcessor:
         :param path_to_source: the path to the xml file to read from (for matching)
         :return: an iterator returning lists of value-name pairs list by list
         """
-        tree = ElemTree.parse(path_to_source)
+        self.__source_path = path_to_source
+        tree = ElemTree.parse(self.__source_path)
         root = tree.getroot()
         for node in self._get_main_node_names():
             list_root = root.findall(".//{}".format(node))[0]
@@ -56,11 +62,18 @@ class XmlProcessor:
         # advertise as iterator for lists of value-name-pairs
         return self
 
+    def build_template(self, template_path: str):
+        # TODO: write some nice docu here
+        pass
+
     def write_xml(self, path_to_file: str) -> None:
+        # TODO: write some nice docu here
         pass
 
     @staticmethod
-    def sort_target_paths(old_list: List[str]) -> List[str]:
+    def group_target_paths(unsorted_paths: List[str]) -> List[GeneratorStruct]:
+        # first insert the name paths
+        # -> use the paths to form groups -> sort by node depth -> attributes after their node
         pass
 
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
@@ -110,6 +123,9 @@ class XmlProcessor:
             for child_node in node:
                 name = child_node.tag
                 if name == self._get_universal_id():
+                    name_path = "{}/{}".format(current_path, name)
+                    # rely on the uniqueness provided by the set
+                    self.__name_nodes.add(name_path)
                     # makes no sense to search for pairs of the same two names
                     continue
                 process_node(child_node, current_path + "/{}".format(name), ids)
