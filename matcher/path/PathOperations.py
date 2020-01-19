@@ -98,3 +98,12 @@ class PathOperator:
         if reduced_path == node_path:
             return True
         return False
+
+    @staticmethod
+    def contains_iterations(to_check: str) -> int:
+        """
+        Returns how many iteration appear in the given path
+        :param to_check: the path to analyze
+        :return: the count of iterator indicators
+        """
+        return to_check.count("[i]")
