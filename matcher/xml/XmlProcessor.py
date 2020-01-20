@@ -70,9 +70,8 @@ class XmlProcessor:
         pass
 
     def group_target_paths(self, unsorted_paths: List[str]) -> List[GeneratorStruct]:
-        # first insert the name paths
+        # TODO: write some expressive docu here
         return GeneratorStruct.construct_from(self.__name_nodes, unsorted_paths)
-        # -> use the paths to form groups -> sort by node depth -> attributes after their node
 
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
         """

@@ -42,7 +42,7 @@ class MatchingManager:
     def generate(self, new_file_path: str, sink_path: str, nested_sink_dir: str = ""):
         # TODO: your docu could stand right here
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
-        path_data = self.__classifier.to_dict()
+        path_data = {y: x for x, y in self.__classifier.to_dict().items()}
         target_classes = self.__xml_handler.group_target_paths(list(path_data.keys()))
         for target_class in target_classes:
             target_names = self.__xlsx_handler.get_names(self.translate_to_xlsx_name_path(target_class.root_path))

@@ -13,7 +13,7 @@ class PathOperator:
         """
         try:
             # regex matches the first 2 words separated by a '/'
-            return re.search(r"^\w+/\w+\b", to_extract_from).group(1)
+            return re.match(r"^\w+/\w+\b", to_extract_from).group()
         except AttributeError:
             raise AttributeError("Path seems to violate the path structure: {}".format(to_extract_from))
 
