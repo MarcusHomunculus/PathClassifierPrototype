@@ -27,25 +27,18 @@ class GeneratorStruct:
         return self.root_path in path_to_check
 
     def add_path(self, to_add: str) -> bool:
-        # TODO: your docu could stand right here
+        """
+        Inserts the path given into the list of paths if it belongs to the structs base path
+
+        :param to_add: the path to insert
+        :return: true if the path had been added else false
+        """
         if not self.matches_jurisdiction(to_add):
             return False
-        index = len(self.node_paths)        # default to append the path
-        if PathOperator.is_nodes_only(to_add):
-            # some attribute paths might be added before their parent path -> check
-            result = self.__get_index_of_attribute_path(to_add)
-            if result != -1 and self.node_paths:    # also check if the list is not empty
-                index = result - 1      # set it before the attribute path
-            # else leave the index at the default
-        else:
-            # means it points to an attribute -> check if the "parent" path is available and put it behind it
-            result = self.__get_index_of_attribute_parent(to_add)
-            if result != -1:
-                index = result + 1  # add one to put it behind its parent
-        # if now node-attribute assignment has been performed check if grouping by nested "classes" makes sense
-        if index == len(self.node_paths) and PathOperator.contains_iterations(to_add):
-            pass
-        # TODO: do some ordering here -> get the required index
+        index = self.__get_index_of_nearest_neighbor(to_add)
+        if index == -1:
+            # just append it
+            index = len(self.node_paths)
         self.node_paths.insert(index, to_add)
         return True
 
@@ -53,31 +46,6 @@ class GeneratorStruct:
     def construct_from(name_paths: Set[str], path_collection: List[str]) -> List[str]:
         # TODO: I need some docu here
         pass
-
-    def __get_index_of_attribute_parent(self, to_find_parent_of: str) -> int:
-        """
-        Checks if the given attribute path already has a parent path in the list of stored paths
-
-        :param to_find_parent_of: the path to which the node itself is required
-        :return: the index of the parent node and -1 if no parent could be found
-        """
-        for i in range(len(self.node_paths)):
-            if PathOperator.is_attribute_path_of(to_find_parent_of, self.node_paths[i]):
-                return i
-        return -1
-
-    def __get_index_of_attribute_path(self, to_find_attribute_path_of: str) -> int:
-        """
-        Checks if the given path might be a parent of an existing attribute path and returns the first index of this
-        attribute addressing path if this is the case
-
-        :param to_find_attribute_path_of: the index of a path that addresses an attribute of the given path
-        :return: the index of the first attribute path to the given path
-        """
-        for i in range(len(self.node_paths)):
-            if PathOperator.is_attribute_path_of(self.node_paths[i], to_find_attribute_path_of):
-                return i
-        return -1
 
     def __get_index_of_nearest_neighbor(self, to_find_neighbor_of) -> int:
         """
@@ -91,7 +59,12 @@ class GeneratorStruct:
         :return: the recommended index and -1 if no affiliation could be made
         """
         def find_next_non_attribute(index_start: int) -> int:
-            # TODO: doc me
+            """
+            Returns the index of the path which does not address an attribute starting from the given index
+
+            :param index_start: the index to start looking
+            :return: the index of the first path addressing a node
+            """
             for idx in range(start=index_start, stop=len(self.node_paths)):
                 if PathOperator.is_nodes_only(self.node_paths[i]):
                     return i
@@ -107,6 +80,6 @@ class GeneratorStruct:
                 return (i + 1) if given_is_attribute_path else (i - 1)
             if PathOperator.share_same_scope(current_path, to_find_neighbor_of):
                 # as long they share the same scope it's fine -> just check that attributes stay with their parent
-                return find_next_non_attribute(i + 1) + 1   # +1 to be behind the last attribute path
+                return find_next_non_attribute(i + 1)
         # probably a different scope -> indicate this with an invalid index
         return -1
