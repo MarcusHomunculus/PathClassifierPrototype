@@ -58,8 +58,7 @@ class XmlProcessor:
         for node in self._get_main_node_names():
             list_root = root.findall(".//{}".format(node))[0]
             self._process_xml_master_nodes(list_root)
-        # continue with transforming the nodes into a list of tuples
-        # advertise as iterator for lists of value-name-pairs
+        # advertise instance as iterator for lists of value-name-pairs
         return self
 
     def build_template(self, template_path: str):
@@ -70,11 +69,10 @@ class XmlProcessor:
         # TODO: write some nice docu here
         pass
 
-    @staticmethod
-    def group_target_paths(unsorted_paths: List[str]) -> List[GeneratorStruct]:
+    def group_target_paths(self, unsorted_paths: List[str]) -> List[GeneratorStruct]:
         # first insert the name paths
+        return GeneratorStruct.construct_from(self.__name_nodes, unsorted_paths)
         # -> use the paths to form groups -> sort by node depth -> attributes after their node
-        pass
 
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
         """
