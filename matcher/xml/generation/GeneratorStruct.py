@@ -1,4 +1,5 @@
-from typing import List, Tuple, Set
+from __future__ import annotations
+from typing import List, Set
 
 from matcher.path.PathOperations import PathOperator
 
@@ -10,7 +11,12 @@ class GeneratorStruct:
     node_paths: List[str]   # do not use a set here to ensure ordering
 
     def __init__(self, name_path: str):
-        # TODO: write some docu here -> recommend not to use it
+        """
+        The constructor for one struct which is a container for a particular class (ie. root node) in the source file
+        and their associated paths. It is recommended to use the function construct_from for instantiation
+
+        :param name_path: the path to the name of the class in the source file
+        """
         # the structure is kinda standardized: the 1st node is the general group node, the 2nd is the root node for
         # every "thing" -> as all of them have to have them just pick the first
         self.root_path = PathOperator.extract_base_path(name_path)
@@ -43,9 +49,29 @@ class GeneratorStruct:
         return True
 
     @staticmethod
-    def construct_from(name_paths: Set[str], path_collection: List[str]) -> List[str]:
-        # TODO: I need some docu here
-        pass
+    def construct_from(name_paths: Set[str], path_collection: List[str]) -> List[GeneratorStruct]:
+        """
+        Builds a list of GeneratorStructs from the given name paths and distributes all paths in the collection among
+        them. If a path can't be assigned a AttributeError is raised
+
+        :param name_paths: the paths to the names in the source file
+        :param path_collection: the source paths to the data in the file
+        :return: a list of structs associated to their class in the source file and holding their ordered paths
+        """
+        struct_list: List[GeneratorStruct] = []
+        for path in name_paths:
+            struct_list.append(GeneratorStruct(path))
+        # after the foundation has been laid continue with sorting the data paths
+        # TODO: transform path_collection to a set to ensure uniqueness?
+        for path in path_collection:
+            success = False
+            for struct in struct_list:
+                success = struct.add_path(path)
+                if success:
+                    break
+            if not success:
+                raise AttributeError("Received a path that could not be associated with a base path: {}".format(path))
+        return struct_list
 
     def __get_index_of_nearest_neighbor(self, to_find_neighbor_of) -> int:
         """
