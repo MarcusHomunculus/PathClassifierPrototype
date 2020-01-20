@@ -37,7 +37,7 @@ class BinClassifier:
         self.__mat.append(PathHistogram(source))
         self.__last_source = source
 
-    def get_active_source_path(self):
+    def get_active_source_path(self) -> str:
         """
         Returns the path under which current matches would be added with add_potential_match() if no source path would
         be given
@@ -45,6 +45,14 @@ class BinClassifier:
         :return: the active source file path
         """
         return self.__last_source
+
+    def get_source_paths(self) -> List[str]:
+        """
+        Returns a list of all source paths registered so far
+
+        :return: all registered source paths
+        """
+        return [x.get_key() for x in self.__mat]
 
     def add_potential_match(self, match_path: str, source_path: str = "") -> None:
         """
