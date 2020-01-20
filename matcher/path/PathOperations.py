@@ -43,21 +43,31 @@ class PathOperator:
         return len(path_parts)
 
     @staticmethod
-    def is_child_path_except_for(to_check: str, base_path: str) -> int:
-        # TODO: doc me
+    def share_same_scope(to_check: str, to_check_against: str) -> bool:
+        # TODO: doc me -> mention that an index starts a new scope
+        def is_new_scope(path_element: str) -> bool:
+            # TODO: write some nice docu here
+            return path_element.endswith("[i]")
+
         first_path = to_check.split("/")
-        second_path = base_path.split("/")
-        if len(first_path) > len(second_path):
-            raise AttributeError("First argument should be a child path of the 2nd: {} vs {}".format(
-                to_check, base_path))
-        for i in range(len(first_path)):
-            if i >= len(second_path):
-                # only return the rest
-                return len(first_path) - len(second_path)
-            if first_path[i] != second_path[i]:
-                return len(first_path) - i
-        # then they are equal
-        return 0
+        second_path = to_check_against.split("/")
+        max_len = len(first_path) if len(first_path) > len(second_path) else len(second_path)
+        for i in range(max_len):
+            if i >= len(first_path) and is_new_scope(second_path[i]):
+                return False
+            elif i >= len(second_path) and is_new_scope(first_path[i]):
+                return False
+            elif i >= len(second_path) or i >= len(first_path):
+                continue
+            # from here on i is within range of both lists lengths
+            if first_path[i] == second_path[i]:
+                continue
+            elif is_new_scope(first_path[i]):
+                return False    # only one starts a new scope -> both have different paths
+            elif is_new_scope(second_path[i]):
+                return False
+        # no situation encountered where one enters a new scope -> might even be equal
+        return True
 
     @staticmethod
     def extract_attribute_name(to_extract_from: str) -> str:
