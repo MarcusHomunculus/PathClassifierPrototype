@@ -33,6 +33,9 @@ class CellPosition:
         self.column = column
         self.read_type = cell_property
 
+    def __str__(self):
+        return "{}{}".format(self.column, self.row)
+
     def is_valid(self) -> bool:
         """
         Returns if the instance is representing sane data
@@ -52,10 +55,10 @@ class CellPosition:
             self.column = new_column_letter
             return
         if is_fixed_row:
-            self.row += 1
+            self.column = new_column_letter
             return
         else:
-            self.column = new_column_letter
+            self.row += 1
 
     def to_xlsx_position(self) -> str:
         """
@@ -94,12 +97,12 @@ class CellPosition:
         :return: a tuple of the CellPosition and if the row is fixed or not
         """
         # matches the pattern $COLUMN $ROW : $TYPE by separating them into groups
-        match = re.match(r"\$?([A-Za-z]+)\$?(\d+):([A-Za-z])$", cell_path)
+        match = re.search(r"\$?([A-Za-z]+)\$?(\d+):?([A-Za-z])?$", cell_path)
         if not match:
             raise AttributeError("Failed to extract a CellPosition from: " + cell_path)
         column = match.group(1)
         row = int(match.group(2))
-        type_str = match.group(3)
+        type_str = "c" if match.group(3) is None else match.group(3)
         if type_str == "c":
             cell_type = CellPropertyType.CONTENT
         elif type_str == "w":

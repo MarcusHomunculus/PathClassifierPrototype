@@ -82,7 +82,7 @@ class XlsxProcessor:
             :param to_extract_from: the path to cut the position away from
             :return: the cell path except for the final part (the cell position)
             """
-            return re.match(r"^[\w/]*(?=@)", to_extract_from).group(1)
+            return re.match(r"^[\w./]*(?=@)", to_extract_from).group()
 
         path_parts = value_name_path.split(";")
         if len(path_parts) == 3:
@@ -112,17 +112,25 @@ class XlsxProcessor:
         file_name_match = re.match(r"^[\w/]*\.xlsx", sink_name_path)
         if not file_name_match:
             raise AttributeError("Could not extract file name from: " + sink_name_path)
-        file_name = file_name_match.group(1)
-        in_document_path = sink_name_path[len(file_name):].split("/")
+        file_name = file_name_match.group()
+        in_document_path = sink_name_path[len(file_name) + 1:].split("/")   # +1 for the '/' after the file name
         wb = load_workbook(file_name)
         position, is_fixed_row = CellPosition.from_cell_path_position(in_document_path[-1])
+        names = []
         # the name path will never have forwarding in this scenario so just interpret the next piece as sheet and check
         # the given positions content
         sheet = wb[in_document_path[0]]
-        names = []
-        while sheet[position.to_xlsx_position()] is not None:
-            names.append(sheet[position.to_xlsx_position()].value)
-            position.increment(is_fixed_row)
+        if is_fixed_row:
+            line_iterator = sheet.iter_cols(min_col=column_index_from_string(position.column), min_row=position.row,
+                                            max_row=position.row)
+        else:
+            line_iterator = sheet.iter_rows(min_row=position.row, min_col=column_index_from_string(position.column),
+                                            max_col=column_index_from_string(position.column))
+        for line in line_iterator:
+            cell = line[0]
+            if cell.value is None:
+                continue
+            names.append(cell.value)
         return set(names)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
