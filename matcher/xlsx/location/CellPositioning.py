@@ -1,6 +1,9 @@
 from __future__ import annotations
 from openpyxl.cell.cell import Cell
+from openpyxl.utils import column_index_from_string, get_column_letter
 from enum import IntEnum
+from typing import Tuple
+import re
 
 from matcher.enum.CellPropertyType import CellPropertyType
 from matcher.xlsx.clustering.CellMatching import CellMatchingStruct
@@ -36,6 +39,32 @@ class CellPosition:
         """
         return self.row > 0 and self.column and self.read_type != CellPropertyType.NONE
 
+    def increment(self, is_fixed_row: bool, increment_both: bool = False) -> None:
+        """
+        Increments the given instance in the given direction. If the second parameter is set the first one is ignored
+
+        :param is_fixed_row: set this to true to increment the column else the row (only) is incremented
+        :param increment_both: set this flag to increment column **and** row for one step
+        """
+        new_column_letter = get_column_letter(column_index_from_string(self.column) + 1)
+        if increment_both:
+            self.row += 1
+            self.column = new_column_letter
+            return
+        if is_fixed_row:
+            self.row += 1
+            return
+        else:
+            self.column = new_column_letter
+
+    def to_xlsx_position(self) -> str:
+        """
+        Return the cell position in the way it is conform with the addressing scheme used by xlsx
+
+        :return: a string only containing the column and the row
+        """
+        return "{}{}".format(self.column, self.row)
+
     @staticmethod
     def create_from(cell: Cell, cell_property: CellPropertyType = CellPropertyType.CONTENT) -> CellPosition:
         """
@@ -54,6 +83,30 @@ class CellPosition:
         :return: an instance of CellPosition with data which can't be encountered in xlsx-files
         """
         return CellPosition(-1, "", CellPropertyType.NONE)
+
+    @staticmethod
+    def from_cell_path_position(cell_path: str) -> Tuple[CellPosition, bool]:
+        """
+        Derives a CellPosition from the given string and returns the result as an boolean if the given string represents
+        a fixed row or not
+
+        :param cell_path: the string representing a cell position in text form
+        :return: a tuple of the CellPosition and if the row is fixed or not
+        """
+        # matches the pattern $COLUMN $ROW : $TYPE by separating them into groups
+        match = re.match(r"\$?([A-Za-z]+)\$?(\d+):([A-Za-z])$", cell_path)
+        if not match:
+            raise AttributeError("Failed to extract a CellPosition from: " + cell_path)
+        column = match.group(1)
+        row = int(match.group(2))
+        type_str = match.group(3)
+        if type_str == "c":
+            cell_type = CellPropertyType.CONTENT
+        elif type_str == "w":
+            cell_type = CellPropertyType.WIDTH
+        else:
+            raise AttributeError("Can't decode Cell content type letter: " + type_str)
+        return CellPosition(row, column, cell_type), "$" in cell_path and not match.group(0).startswith("$")
 
 
 class CellPositionStruct:
