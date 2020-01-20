@@ -4,6 +4,7 @@ import logging
 
 from matcher.xlsx.XlsxProcessor import XlsxProcessor
 from matcher.xml.XmlProcessor import XmlProcessor
+from matcher.xml.generation.GeneratorStruct import GeneratorStruct
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 
@@ -42,13 +43,42 @@ class MatchingManager:
         # TODO: your docu could stand right here
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
         path_data = self.__classifier.to_dict()
-        target_paths = XmlProcessor.group_target_paths(list(path_data.keys()))
-        for thing in self.__xlsx_handler.get_names(list(path_data.values())):
-            # TODO: create the node here -> create a function that expects the type to generate
-            for path in target_paths:
-                # TODO: construct the objects
-                pass
+        target_classes = self.__xml_handler.group_target_paths(list(path_data.keys()))
+        for target_class in target_classes:
+            target_names = self.__xlsx_handler.get_names(self.translate_to_xlsx_name_path(target_class.root_path))
+            pass
+        # for source_class in self.__xlsx_handler.get_names(list(path_data.values())):
+        #     # TODO: create the node here -> create a function that expects the type to generate
+        #   for path in target_paths:
+        #        # TODO: construct the objects
+        #        pass
 
+    def translate_to_xlsx_name_path(self, xml_base_path: str) -> str:
+        """
+        Takes the given xml path and translates it to a name path for the given source-file-class the base path is
+        addressing
+
+        :param xml_base_path: the base-path(!) for a class in the source file
+        :return: a corresponding name path in the sink file
+        """
+        # just pick one entry -> all paths for the sink file have a name path anyway
+        # TODO: their should be a way to get the same information with less resources
+        # the classifier-dict is sink_path : source_path
+        transmuted = {y: x for x, y in self.__classifier.to_dict().items()}
+        for key in transmuted:
+            if xml_base_path in key:
+                return XlsxProcessor.extract_name_path(transmuted[key])
+        raise AttributeError("Could not find a match for '{}' in the source path set".format(xml_base_path))
+
+    def dump_classifier_matrix(self, file: str) -> None:
+        """
+        Creates a **firefox** compatible html document illustrating the matches of the classifier
+
+        :param file: the file to write the HTML data into
+        """
+        raw_data = self.__classifier.dump_raw_data()
+        writer = HtmlWriter(raw_data)
+        writer.dump_as_html(file)
 
     @staticmethod
     def __read_config(path_to_file: str) -> Dict[str, str]:
@@ -62,9 +92,3 @@ class MatchingManager:
         with open(path_to_file, "r", encoding="utf-8") as c:
             config.update(toml.load(c))
         return config
-
-    def dump_classifier_matrix(self, file: str) -> None:
-        # TODO: write some expressive docu here
-        raw_data = self.__classifier.dump_raw_data()
-        writer = HtmlWriter(raw_data)
-        writer.dump_as_html(file)

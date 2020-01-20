@@ -63,7 +63,16 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
-    def get_names(self, data_paths: Iterator[str]) -> Iterator[str]:
+    def get_names(self, base_sink_path: str) -> Iterator[str]:
+        file_name_match = re.match(r"^[\w/]*\.xlsx", base_sink_path)
+        if not file_name_match:
+            raise AttributeError("Could not extract file name from: " + base_sink_path)
+        file_name = file_name_match.group(1)
+        in_document_path = base_sink_path[len(file_name):].split("/")
+        wb = load_workbook(file_name)
+        sheet = wb[in_document_path[0]]
+        pass
+
         # TODO: I need some docu here
         # TODO: extract the name paths from the data_paths and assemble a name list from them -> a main node type separation is required for that
         pass
@@ -71,6 +80,39 @@ class XlsxProcessor:
     def receive_for_path(self, path: str, name: str) -> str:
         # TODO: doc me
         pass
+
+    @staticmethod
+    def extract_name_path(value_name_path: str) -> str:
+        """
+        Returns the name path of the given value-name path
+
+        :param value_name_path: the path of a value-name combination
+        :return: the "absolute" path to the name
+        """
+        def extract_base_path(to_extract_from: str) -> str:
+            """
+            Extracts the path up to (but excluding) the cell position from the path given
+
+            :param to_extract_from: the path to cut the position away from
+            :return: the cell path except for the final part (the cell position)
+            """
+            return re.match(r"^[\w/]*(?=@)", to_extract_from).group(1)
+
+        path_parts = value_name_path.split(";")
+        if len(path_parts) == 3:
+            # means it is a cross matrix
+            basic_path = extract_base_path(value_name_path)
+            # only the first cell position has a '@' -> so prepend it
+            name_position = path_parts[2] if path_parts[2].startswith("@") else ("@" + path_parts[2])
+            return basic_path + name_position
+        elif len(path_parts) == 2:
+            # means it is a row- or column-table
+            if not path_parts[1].startswith("@"):
+                return path_parts[1]
+            basic_path = extract_base_path(value_name_path)
+            return basic_path + path_parts[1]
+        raise AttributeError("The given paths structure is unknown: {}. Giving up disassembling it".format(
+            value_name_path))
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
                         path: str, check_for_value_only: bool = False) -> CellPositionStruct:
