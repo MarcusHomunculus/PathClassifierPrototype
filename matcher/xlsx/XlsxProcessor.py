@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Iterator, Dict
+from typing import Tuple, Iterator, Dict, Set
 import re
 import os
 from openpyxl import load_workbook
@@ -63,20 +63,6 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
-    def get_names(self, base_sink_path: str) -> Iterator[str]:
-        file_name_match = re.match(r"^[\w/]*\.xlsx", base_sink_path)
-        if not file_name_match:
-            raise AttributeError("Could not extract file name from: " + base_sink_path)
-        file_name = file_name_match.group(1)
-        in_document_path = base_sink_path[len(file_name):].split("/")
-        wb = load_workbook(file_name)
-        sheet = wb[in_document_path[0]]
-        pass
-
-        # TODO: I need some docu here
-        # TODO: extract the name paths from the data_paths and assemble a name list from them -> a main node type separation is required for that
-        pass
-
     def receive_for_path(self, path: str, name: str) -> str:
         # TODO: doc me
         pass
@@ -113,6 +99,31 @@ class XlsxProcessor:
             return basic_path + path_parts[1]
         raise AttributeError("The given paths structure is unknown: {}. Giving up disassembling it".format(
             value_name_path))
+
+    @staticmethod
+    def get_names(sink_name_path: str) -> Set[str]:
+        """
+        Returns the list of names that can be taken from the given name path (**only**). If the given path does not
+        address names the function might enter undefined behaviour
+
+        :param sink_name_path: the path to the names
+        :return: an set holding all names found
+        """
+        file_name_match = re.match(r"^[\w/]*\.xlsx", sink_name_path)
+        if not file_name_match:
+            raise AttributeError("Could not extract file name from: " + sink_name_path)
+        file_name = file_name_match.group(1)
+        in_document_path = sink_name_path[len(file_name):].split("/")
+        wb = load_workbook(file_name)
+        position, is_fixed_row = CellPosition.from_cell_path_position(in_document_path[-1])
+        # the name path will never have forwarding in this scenario so just interpret the next piece as sheet and check
+        # the given positions content
+        sheet = wb[in_document_path[0]]
+        names = []
+        while sheet[position.to_xlsx_position()] is not None:
+            names.append(sheet[position.to_xlsx_position()].value)
+            position.increment(is_fixed_row)
+        return set(names)
 
     def _check_row_wise(self, sheet: Worksheet, value_name_pairs: Iterator[ValueNamePair],
                         path: str, check_for_value_only: bool = False) -> CellPositionStruct:

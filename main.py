@@ -62,5 +62,6 @@ if __name__ == "__main__":
     manager = MatchingManager("config.toml")
     manager.train("ref.xml", default_xlsx_path, "{}/".format(default_nested_dir))
     manager.dump_classifier_matrix("table")
+    manager.generate("test.xml", default_xlsx_path, default_nested_dir + "/")
 
     print("Done!")
