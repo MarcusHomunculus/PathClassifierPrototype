@@ -23,6 +23,9 @@ class GeneratorStruct:
         self.name_path = name_path
         self.node_paths = []
 
+    def __str__(self):
+        return self.root_path
+
     def matches_jurisdiction(self, path_to_check: str) -> bool:
         """
         Checks if the given path falls into the base class / base path this instance represents
@@ -91,10 +94,14 @@ class GeneratorStruct:
             :param index_start: the index to start looking
             :return: the index of the first path addressing a node
             """
-            for idx in range(start=index_start, stop=len(self.node_paths)):
-                if PathOperator.is_nodes_only(self.node_paths[i]):
-                    return i
+            for idx in range(index_start, len(self.node_paths)):
+                if PathOperator.is_nodes_only(self.node_paths[idx]):
+                    return idx
+            return len(self.node_paths)
 
+        if not self.node_paths:
+            # no neighbors to check so just return 0 to add it at the beginning
+            return 0
         given_is_attribute_path = not PathOperator.is_nodes_only(to_find_neighbor_of)
         if given_is_attribute_path:
             def is_affiliated(x: str) -> bool: return PathOperator.is_attribute_path_of(to_find_neighbor_of, x)
@@ -103,7 +110,10 @@ class GeneratorStruct:
         for i in range(len(self.node_paths)):
             current_path = self.node_paths[i]
             if is_affiliated(current_path):
-                return (i + 1) if given_is_attribute_path else (i - 1)
+                return (i + 1) if given_is_attribute_path else i
+        # separate these to ensure that nodes and their attribute paths always stay together
+        for i in range(len(self.node_paths)):
+            current_path = self.node_paths[i]
             if PathOperator.share_same_scope(current_path, to_find_neighbor_of):
                 # as long they share the same scope it's fine -> just check that attributes stay with their parent
                 return find_next_non_attribute(i + 1)

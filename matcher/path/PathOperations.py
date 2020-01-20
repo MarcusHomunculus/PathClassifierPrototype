@@ -26,7 +26,7 @@ class PathOperator:
         :return: if the last path element is an attribute or not
         """
         # regex checks if a '@' is in front of the very last word
-        return bool(re.match(r"@\w+$", node_path))
+        return not bool(re.search(r"@\w+$", node_path))
 
     @staticmethod
     def get_node_count(node_path: str) -> int:
@@ -44,9 +44,18 @@ class PathOperator:
 
     @staticmethod
     def share_same_scope(to_check: str, to_check_against: str) -> bool:
-        # TODO: doc me -> mention that an index starts a new scope
+        """
+        Checks if both paths are in the same scope: this is the case when either both share the index identifier at the
+        same path-node or both have no index identifier
+
+        :param to_check: the path to check for scope
+        :param to_check_against: the other one
+        :return: true if both share the same scope else false
+        """
         def is_new_scope(path_element: str) -> bool:
-            # TODO: write some nice docu here
+            """
+            Returns if the current element indicates opening a new scope (by containing an index identifier)
+            """
             return path_element.endswith("[i]")
 
         first_path = to_check.split("/")
@@ -77,10 +86,10 @@ class PathOperator:
         :param to_extract_from: the path leading to an attribute
         :return: the name of the attribute the path points to
         """
-        success = re.search(r"(?<=@)\w+$", to_extract_from)
-        if success:
-            return success.group(1)
-        return ""
+        try:
+            return re.search(r"(?<=@)\w+$", to_extract_from).group()
+        except AttributeError:
+            raise AttributeError("Could not extract the property name from: " + to_extract_from)
 
     @staticmethod
     def is_attribute_path_of(to_check: str, node_path: str) -> bool:
@@ -104,7 +113,7 @@ class PathOperator:
         # remove the trailing separator if the original doesn't have one
         extra_char = 0 if node_path.endswith('/') else 1
         # cut away the attribute: if then both are equal to_check is an attribute path of node_path
-        reduced_path = to_check[:len(attribute_name) + extra_char + 1]      # +1 for the '@' in the attributes name
+        reduced_path = to_check[:-(len(attribute_name) + extra_char + 1)]       # +1 for the '@' in the attributes name
         if reduced_path == node_path:
             return True
         return False
