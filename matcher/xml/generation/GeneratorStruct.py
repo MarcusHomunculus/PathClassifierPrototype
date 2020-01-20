@@ -78,3 +78,35 @@ class GeneratorStruct:
             if PathOperator.is_attribute_path_of(self.node_paths[i], to_find_attribute_path_of):
                 return i
         return -1
+
+    def __get_index_of_nearest_neighbor(self, to_find_neighbor_of) -> int:
+        """
+        Returns the index in which the given path should be inserted depending on the existing paths in the list.
+        Recommendation depends on direct affiliation to an existing path (attribute path to its parenting node path and
+        vice versa) and if the path is in the same scope of already existing paths. Scope is changed in this scenario
+        when child nodes contain a list of the same node (which is indicated by the iteration symbol in the name).
+        If no association can be made an invalid index is returned
+
+        :param to_find_neighbor_of: the path to get an index for
+        :return: the recommended index and -1 if no affiliation could be made
+        """
+        def find_next_non_attribute(index_start: int) -> int:
+            # TODO: doc me
+            for idx in range(start=index_start, stop=len(self.node_paths)):
+                if PathOperator.is_nodes_only(self.node_paths[i]):
+                    return i
+
+        given_is_attribute_path = not PathOperator.is_nodes_only(to_find_neighbor_of)
+        if given_is_attribute_path:
+            def is_affiliated(x: str) -> bool: return PathOperator.is_attribute_path_of(to_find_neighbor_of, x)
+        else:
+            def is_affiliated(x: str) -> bool: return PathOperator.is_attribute_path_of(x, to_find_neighbor_of)
+        for i in range(len(self.node_paths)):
+            current_path = self.node_paths[i]
+            if is_affiliated(current_path):
+                return (i + 1) if given_is_attribute_path else (i - 1)
+            if PathOperator.share_same_scope(current_path, to_find_neighbor_of):
+                # as long they share the same scope it's fine -> just check that attributes stay with their parent
+                return find_next_non_attribute(i + 1) + 1   # +1 to be behind the last attribute path
+        # probably a different scope -> indicate this with an invalid index
+        return -1
