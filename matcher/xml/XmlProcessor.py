@@ -8,7 +8,7 @@ from xml.dom import minidom
 
 from classifier.BinClassifier import BinClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
-from matcher.xml.generation.GeneratorStruct import GeneratorStruct
+from matcher.xml.generation.GeneratorCluster import GeneratorStruct
 
 
 class XmlProcessor:

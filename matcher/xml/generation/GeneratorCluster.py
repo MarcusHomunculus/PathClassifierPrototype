@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Set
+from typing import List, Set, Tuple
 
 from matcher.path.PathOperations import PathOperator
 
@@ -119,3 +119,48 @@ class GeneratorStruct:
                 return find_next_non_attribute(i + 1)
         # probably a different scope -> indicate this with an invalid index
         return -1
+
+
+class ValuePathStruct:
+
+    name: str
+    values: List[str]
+    path: str
+    __offset: int
+    __index_identifier = "[i]"
+    __run: int
+
+    def __init__(self, name: str, values: List[str], source_path: str, offset: int = 0):
+        """
+        The constructor
+
+        :param name: the name to represent
+        :param values: a list of values (usually this should be a list of one)
+        :param source_path: the path to represent and cluster with the value
+        :param offset: an optional parameter to influence the indexing for the path (if applicable)
+        """
+        self.name = name
+        self.values = list(values)
+        self.path = source_path
+        self.__offset = offset
+        self.__run = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> Tuple[str, str]:
+        def replace_index(old_path: str, index: int) -> str:
+            """
+            Replaces the placeholder for the index with an index to the one given
+            """
+            # only replace one to ensure it fails later if multiple exist
+            return old_path.replace(self.__index_identifier, "[{}]".format(index), 1)
+
+        if self.__run >= len(self.values):
+            raise StopIteration()
+        self.__run += 1
+        if self.__index_identifier not in self.path or len(self.values) < 2:
+            return self.values[0], self.path
+        else:
+            return self.values[self.__run - 1], replace_index(self.path, self.__run + self.__offset - 1)
+

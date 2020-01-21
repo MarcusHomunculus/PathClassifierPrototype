@@ -4,7 +4,7 @@ import logging
 
 from matcher.xlsx.XlsxProcessor import XlsxProcessor
 from matcher.xml.XmlProcessor import XmlProcessor
-from matcher.xml.generation.GeneratorStruct import GeneratorStruct
+from matcher.xml.generation.GeneratorCluster import GeneratorStruct
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 
