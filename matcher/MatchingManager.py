@@ -31,7 +31,7 @@ class MatchingManager:
     def train(self, source_path: str, sink_path: str, nested_sink_dir: str = ""):
         # TODO: doc me
         self.__sink_path = sink_path
-        self.__nested_sink_dir = nested_sink_dir
+        self.__nested_sink_dir = (nested_sink_dir + "/") if not nested_sink_dir.endswith("/") else nested_sink_dir
         self.__xml_handler = XmlProcessor(self.__classifier, self.__config)
         self.__xlsx_handler = XlsxProcessor(self.__classifier, self.__config, self.__sink_path, self.__nested_sink_dir)
         for pair_list in self.__xml_handler.read_xml(source_path):
@@ -43,15 +43,17 @@ class MatchingManager:
         self.__path_dict = {y: x for x, y in self.__classifier.to_dict().items()}
         # generate the template
 
-    def generate(self, new_file_path: str, sink_path: str, nested_sink_dir: str = ""):
+    def generate(self, new_file_path: str):
         # TODO: your docu could stand right here
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
         target_classes = self.__xml_handler.group_target_paths(list(self.__path_dict.keys()))
         for target_class in target_classes:
             target_names = self.__xlsx_handler.get_names(self.translate_to_xlsx_name_path(target_class.root_path))
             for name in target_names:
-                for path in self.__classifier.to_dict().keys():
-                    values = self.__xlsx_handler.receive_for_path()
+                for source_path in target_class.node_paths:
+                    values = self.__xlsx_handler.receive_for_path(self.__path_dict[source_path], name,
+                                                                  self.__nested_sink_dir)
+                    hello = "world"
         # for source_class in self.__xlsx_handler.get_names(list(path_data.values())):
         #     # TODO: create the node here -> create a function that expects the type to generate
         #   for path in target_paths:
