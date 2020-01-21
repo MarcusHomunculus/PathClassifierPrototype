@@ -27,6 +27,7 @@ def generate_json(worker_count: int) -> None:
 if __name__ == "__main__":
     default_xlsx_path = "data.xlsx"
     default_nested_dir = "sections"
+    default_xml_path = "ref.xml"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
     shall_generate_base = "y"
@@ -60,8 +61,9 @@ if __name__ == "__main__":
     # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
     # m.test_table_reading()
     manager = MatchingManager("config.toml")
-    manager.train("ref.xml", default_xlsx_path, "{}/".format(default_nested_dir))
+    manager.train(default_xml_path, default_xlsx_path, "{}/".format(default_nested_dir))
     manager.dump_classifier_matrix("table")
+    manager.create_build_environment("template/template.xml")
     manager.generate("test.xml")
 
     print("Done!")

@@ -2,6 +2,9 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Iterator, Set
 import re
 import xml.etree.ElementTree as ElemTree
+from pathlib import Path
+import os
+from xml.dom import minidom
 
 from classifier.BinClassifier import BinClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
@@ -15,6 +18,7 @@ class XmlProcessor:
     __targets: List[(str, List[ValueNamePair])]
     __source_path: str
     __name_nodes: Set[str]
+    __template_path: str
 
     def __init__(self, sink: BinClassifier, config: Dict[str, str]):
         """
@@ -61,16 +65,50 @@ class XmlProcessor:
         # advertise instance as iterator for lists of value-name-pairs
         return self
 
-    def build_template(self, template_path: str):
-        # TODO: write some nice docu here
-        pass
+    def build_template(self, source_path: str, template_path: str) -> None:
+        """
+        Creates a template file from the existing xml document by purging it from every node that exists more then once
+
+        :param source_path: the path to the file to condense
+        :param template_path: the path to the file where to write the result to
+        """
+        def remove_if_multiple_exist(node: ElemTree.Element) -> None:
+            for sub_node in node:
+                # first check the child nodes
+                remove_if_multiple_exist(sub_node)
+            needs_removal = self._has_same_name_children(node)
+            if not needs_removal:
+                return
+            sub_nodes = list(node)
+            # this will iterate over all child nodes except the first one in reverse order
+            for i in range(len(sub_nodes) - 1, 0, -1):
+                node.remove(sub_nodes[i])
+
+        tree = ElemTree.parse(source_path)
+        root = tree.getroot()
+        for main_node in self._get_main_node_names():
+            list_root = root.findall(".//{}".format(main_node))[0]
+            remove_if_multiple_exist(list_root)
+        self.__template_path = template_path
+        dir_path = os.path.dirname(template_path)
+        if dir_path:
+            Path(dir_path).mkdir(parents=True, exist_ok=True)
+        # tree.write(template_path)
+        with open(template_path, "w") as file:
+            print(self.__prettify(tree), file=file)
 
     def write_xml(self, path_to_file: str) -> None:
         # TODO: write some nice docu here
         pass
 
     def group_target_paths(self, unsorted_paths: List[str]) -> List[GeneratorStruct]:
-        # TODO: write some expressive docu here
+        """
+        Groups the given paths into classes in form of GeneratorStructs and assigns them these classes. The function
+        assigns all paths or will crash trying
+
+        :param unsorted_paths: the path to order
+        :return: a list of xml-class structs
+        """
         return GeneratorStruct.construct_from(self.__name_nodes, unsorted_paths)
 
     def _process_xml_master_nodes(self, parent_node: ElemTree.Element) -> None:
@@ -239,3 +277,17 @@ class XmlProcessor:
         :return: the "clean" path only holding abstract indexes if any at all
         """
         return re.sub(r"\[\d.?]", "[i]", path_str)
+
+    @staticmethod
+    def __prettify(elem: ElemTree.ElementTree) -> str:
+        """
+        Corrects the indentation for the generated XML
+        :param elem: the final tree to prettify
+        :return: a string which has the well known XML-structure
+        """
+        # courtesy goes to https://pymotw.com/2/xml/etree/ElementTree/create.html#pretty-printing-xml
+        tree_str = ElemTree.tostring(elem.getroot(), encoding='utf-8', method='xml')
+        restructured = minidom.parseString(tree_str)
+        restructured_str = restructured.toprettyxml(indent="  ")
+        return restructured.toprettyxml(indent="  ", newl='')
+
