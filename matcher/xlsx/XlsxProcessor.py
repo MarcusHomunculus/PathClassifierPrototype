@@ -69,6 +69,7 @@ class XlsxProcessor:
 
         :param path: the path to the information in the excel table
         :param name: the name to the value wanted
+        :param nested_path: the path to use when following a file forwarding
         :return: the value addressed
         """
         path_parts = path.split(";")
@@ -419,11 +420,14 @@ class XlsxProcessor:
         sheet = wb[sheet_name]
         name_position, is_fixed_row = names_tuple
         for cell in XlsxProcessor.__get_cell_line_iterator(sheet, name_position, is_fixed_row):
-            if cell.value == to_find:
-                if is_fixed_row:
-                    cross_area.column = cell.column
-                else:
-                    cross_area.row = cell.row
+            if cell.value != to_find:
+                continue
+            if is_fixed_row:
+                cross_area.column = cell.column_letter
+            else:
+                cross_area.row = cell.row
+            break
+
         value_template, name_is_fixed_row = values_tuple
         value_list = []
         for cross_cell in XlsxProcessor.__get_cell_line_iterator(sheet, cross_area, not is_fixed_row):
@@ -436,7 +440,6 @@ class XlsxProcessor:
                 value_position = CellPosition(value_template.row, cross_cell.column, CellPropertyType.CONTENT)
             else:
                 value_position = CellPosition(cross_cell.row, value_template.column, CellPropertyType.CONTENT)
-            # TODO: this has to be tested
             value = sheet[value_position.to_xlsx_position()].value
             value_list.append(value)
         return value_list

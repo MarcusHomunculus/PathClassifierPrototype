@@ -21,6 +21,9 @@ class PathHistogram:
         self.__match_bins = []
         self.__last_match = ""
 
+    def __str__(self):
+        return self.__source_path
+
     def add_matched_path(self, possible_match_path: str) -> None:
         """
         Allows to increase the count for the path given
