@@ -63,7 +63,7 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
-    def receive_for_path(self, path: str, name: str) -> List[str]:
+    def receive_for_path(self, path: str, name: str, nested_path: str = "") -> List[str]:
         """
         Resolves the given path and translates the name into an associated value (list) in the excel file
 
@@ -74,11 +74,10 @@ class XlsxProcessor:
         path_parts = path.split(";")
         if len(path_parts) == 3:
             # is a cross-table -> no forwarding here so tackle the problem just straight on
-            # base_path = self.__extract_base_path(path).split("/")
             return self._get_from_cross_table(name, path_parts[0], path_parts[1], path_parts[2])
         if len(path_parts) == 2:
             # is a row- or column-table
-            return self._get_from_linear_table(name, path_parts[0], path_parts[1])
+            return self._get_from_linear_table(name, path_parts[0], path_parts[1], nested_path)
         else:
             raise AttributeError("Can't decode the type of the table the path '{}' represents".format(path))
 
@@ -96,13 +95,13 @@ class XlsxProcessor:
             basic_path = XlsxProcessor.__extract_base_path(value_name_path)
             # only the first cell position has a '@' -> so prepend it
             name_position = path_parts[2] if path_parts[2].startswith("@") else ("@" + path_parts[2])
-            return basic_path + name_position
+            return "{}/{}".format(basic_path, name_position)
         elif len(path_parts) == 2:
             # means it is a row- or column-table
             if not path_parts[1].startswith("@"):
                 return path_parts[1]
             basic_path = XlsxProcessor.__extract_base_path(value_name_path)
-            return basic_path + path_parts[1]
+            return "{}/{}".format(basic_path, path_parts[1])
         raise AttributeError("The given paths structure is unknown: {}. Giving up disassembling it".format(
             value_name_path))
 
@@ -442,13 +441,14 @@ class XlsxProcessor:
             value_list.append(value)
         return value_list
 
-    def _get_from_linear_table(self, to_find: str, value_path: str, name_path: str) -> List[str]:
+    def _get_from_linear_table(self, to_find: str, value_path: str, name_path: str, nested_path: str) -> List[str]:
         """
         Returns the value(s) from the path data provided for the name given
 
         :param to_find: the name to get the corresponding value of
         :param value_path: the path to the values in excel
         :param name_path: the path to the name in excel
+        :param nested_path: the path to follow when accessing a file forwarding
         :return: a list of values found corresponding to the name (might also be a list of one element)
         """
         def contains_forwarding_at(to_check: List[str]) -> int:
@@ -544,7 +544,7 @@ class XlsxProcessor:
             name_path_nodes = self.__disassemble_base_path(name_path)
             name_position, is_fixed_row = CellPosition.from_cell_path_position(name_path)
             wb = load_workbook(name_path_nodes[0])
-            sheet = wb[name_path_nodes]
+            sheet = wb[name_path_nodes[1]]
             forwarding_index = extract_forward_index(value_path_nodes[forwarding_node_index])
             if is_fixed_row:
                 dummy_position = CellPosition(forwarding_index, name_position.column, CellPropertyType.CONTENT)
@@ -554,9 +554,12 @@ class XlsxProcessor:
             # continue with extracting the values -> extract all at once -> this could also be done by returning an
             # iterator but this is overkill in this scenario
             file_name = extract_value_same_sheet(sheet, dummy_position, name_position, is_fixed_row)
+            if nested_path:
+                # prepend the required path if one is set
+                file_name = nested_path + file_name
             wb = load_workbook(file_name)
             # the sheet name of the forwarding path comes after the forwarding symbol
-            sheet = wb[name_path_nodes[forwarding_node_index + 1]]
+            sheet = wb[value_path_nodes[forwarding_node_index + 1]]
             value_position, is_fixed_row = CellPosition.from_cell_path_position(value_path)
             return extract_value_list(sheet, value_position, is_fixed_row)
 
@@ -704,7 +707,7 @@ class XlsxProcessor:
         :param to_extract_from: the path to cut the position away from
         :return: the cell path except for the final part (the cell position)
         """
-        return re.match(r"^[\w./]*(?=@)", to_extract_from).group()
+        return re.match(r"^.*(?=/@)", to_extract_from).group()
 
     @staticmethod
     def __disassemble_base_path(to_extract_from: str) -> List[str]:
@@ -715,7 +718,7 @@ class XlsxProcessor:
         :return: a list of all path nodes except for the first cell position
         """
         # use substring to cut away the trailing '/'
-        reduced_path = XlsxProcessor.__extract_base_path(to_extract_from)[:-1]
+        reduced_path = XlsxProcessor.__extract_base_path(to_extract_from)
         file_path = XlsxProcessor.__extract_file_path(reduced_path)
         to_return = [file_path]
         to_return.extend(reduced_path[len(file_path) + 1:].split("/"))
