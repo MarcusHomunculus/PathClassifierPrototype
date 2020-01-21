@@ -109,7 +109,7 @@ class BinClassifier:
         """
         Returns the sink-source-path-mapping as a dictionary
 
-        :return: a dictionary from sink-paths to source paths
+        :return: a dictionary from sink paths to source paths
         """
         return dict(self.__result_buffer)
 

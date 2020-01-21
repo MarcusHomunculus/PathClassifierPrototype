@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Iterator, Dict, Set
+from typing import Tuple, Iterator, Dict, Set, List
 import re
 import os
 from openpyxl import load_workbook
@@ -63,9 +63,24 @@ class XlsxProcessor:
             self._check_column_wise(wb[sheet], value_name_pairs, self.__root_xlsx)
             self._check_as_cross_table(wb[sheet], value_name_pairs, self.__root_xlsx)
 
-    def receive_for_path(self, path: str, name: str) -> str:
-        # TODO: doc me
-        pass
+    def receive_for_path(self, path: str, name: str) -> List[str]:
+        """
+        Resolves the given path and translates the name into an associated value (list) in the excel file
+
+        :param path: the path to the information in the excel table
+        :param name: the name to the value wanted
+        :return: the vlaue addressed
+        """
+        path_parts = path.split(";")
+        if len(path_parts) == 3:
+            # is a cross-table -> no forwarding here so tackle the problem just straight on
+            # base_path = self.__extract_base_path(path).split("/")
+            return self._get_from_cross_table(name, path_parts[0], path_parts[1], path_parts[2])
+        if len(path_parts) == 2:
+            # is a row- or column-table
+            pass
+        else:
+            raise AttributeError("Can't decode the type of the table the path '{}' represents".format(path))
 
     @staticmethod
     def extract_name_path(value_name_path: str) -> str:
@@ -75,19 +90,10 @@ class XlsxProcessor:
         :param value_name_path: the path of a value-name combination
         :return: the "absolute" path to the name
         """
-        def extract_base_path(to_extract_from: str) -> str:
-            """
-            Extracts the path up to (but excluding) the cell position from the path given
-
-            :param to_extract_from: the path to cut the position away from
-            :return: the cell path except for the final part (the cell position)
-            """
-            return re.match(r"^[\w./]*(?=@)", to_extract_from).group()
-
         path_parts = value_name_path.split(";")
         if len(path_parts) == 3:
             # means it is a cross matrix
-            basic_path = extract_base_path(value_name_path)
+            basic_path = XlsxProcessor.__extract_base_path(value_name_path)
             # only the first cell position has a '@' -> so prepend it
             name_position = path_parts[2] if path_parts[2].startswith("@") else ("@" + path_parts[2])
             return basic_path + name_position
@@ -95,13 +101,12 @@ class XlsxProcessor:
             # means it is a row- or column-table
             if not path_parts[1].startswith("@"):
                 return path_parts[1]
-            basic_path = extract_base_path(value_name_path)
+            basic_path = XlsxProcessor.__extract_base_path(value_name_path)
             return basic_path + path_parts[1]
         raise AttributeError("The given paths structure is unknown: {}. Giving up disassembling it".format(
             value_name_path))
 
-    @staticmethod
-    def get_names(sink_name_path: str) -> Set[str]:
+    def get_names(self, sink_name_path: str) -> Set[str]:
         """
         Returns the list of names that can be taken from the given name path (**only**). If the given path does not
         address names the function might enter undefined behaviour
@@ -109,25 +114,14 @@ class XlsxProcessor:
         :param sink_name_path: the path to the names
         :return: an set holding all names found
         """
-        file_name_match = re.match(r"^[\w/]*\.xlsx", sink_name_path)
-        if not file_name_match:
-            raise AttributeError("Could not extract file name from: " + sink_name_path)
-        file_name = file_name_match.group()
-        in_document_path = sink_name_path[len(file_name) + 1:].split("/")   # +1 for the '/' after the file name
+        file_name, sheet_name = self.__disassemble_base_path(sink_name_path)
         wb = load_workbook(file_name)
-        position, is_fixed_row = CellPosition.from_cell_path_position(in_document_path[-1])
+        position, is_fixed_row = CellPosition.from_cell_path_position(sink_name_path)
         names = []
         # the name path will never have forwarding in this scenario so just interpret the next piece as sheet and check
         # the given positions content
-        sheet = wb[in_document_path[0]]
-        if is_fixed_row:
-            line_iterator = sheet.iter_cols(min_col=column_index_from_string(position.column), min_row=position.row,
-                                            max_row=position.row)
-        else:
-            line_iterator = sheet.iter_rows(min_row=position.row, min_col=column_index_from_string(position.column),
-                                            max_col=column_index_from_string(position.column))
-        for line in line_iterator:
-            cell = line[0]
+        sheet = wb[sheet_name]
+        for cell in XlsxProcessor.__get_cell_line_iterator(sheet, position, is_fixed_row):
             if cell.value is None:
                 continue
             names.append(cell.value)
@@ -407,6 +401,52 @@ class XlsxProcessor:
                 return result_col
         return CellPositionStruct.create_no_find()
 
+    def _get_from_cross_table(self, to_find: str, cross_area_path: str, value_path: str, name_path: str) -> List[str]:
+        """
+        Treats the sheet under the given name as cross table and extracts the data of it by checking for the name
+        (to_find) and associate all values marked with "x" with it
+
+        :param to_find: the name in question
+        :param cross_area_path: the path that addresses the cross area. This path should also contain the file path
+        :param value_path: the path to the first value cell which should only consist of the value cell position
+        :param name_path: the path to the first name cell which should only consist of the name cell position
+        :return: all values that could be associated with the given name
+        """
+        values_tuple = CellPosition.from_cell_path_position(value_path)
+        names_tuple = CellPosition.from_cell_path_position(name_path)
+        cross_area = CellPosition.from_cell_path_position(cross_area_path)[0]
+        file_name, sheet_name = self.__disassemble_base_path(cross_area_path)
+        wb = load_workbook(file_name)
+        sheet = wb[sheet_name]
+        name_position, is_fixed_row = names_tuple
+        for cell in XlsxProcessor.__get_cell_line_iterator(sheet, name_position, is_fixed_row):
+            if cell.value == to_find:
+                if is_fixed_row:
+                    cross_area.column = cell.column
+                else:
+                    cross_area.row = cell.row
+        value_template, name_is_fixed_row = values_tuple
+        value_list = []
+        for cross_cell in XlsxProcessor.__get_cell_line_iterator(sheet, cross_area, not is_fixed_row):
+            if cross_cell.value is None:
+                continue
+            if "x" not in cross_cell.value and "X" not in cross_cell.value:
+                continue
+            # find the corresponding name
+            if name_is_fixed_row:
+                value_position = CellPosition(value_template.row, cross_cell.column, CellPropertyType.CONTENT)
+            else:
+                value_position = CellPosition(cross_cell.row, value_template.column, CellPropertyType.CONTENT)
+            # TODO: this has to be tested
+            value = sheet[value_position.to_xlsx_position()].value
+            value_list.append(value)
+        return value_list
+
+    @staticmethod
+    def _get_from_linear_table(to_find: str, file_name: str, sheet_name: str, value_tuple: Tuple[CellPosition, bool],
+                               name_tuple: Tuple[CellPosition, bool], forwarding_index: int = -1) -> List[str]:
+        pass
+
     def __includes_forwarding(self, sheet_name: str) -> Tuple[bool, str]:
         """
         Checks if the given sheet name is registered with a column which forwards to another file
@@ -556,3 +596,58 @@ class XlsxProcessor:
         else:
             template = XlsxProcessor.TEMPLATE_CELL_ADDRESS_ROW_WISE
         return template.format(col, row, str(property_identifier))
+
+    @staticmethod
+    def __extract_base_path(to_extract_from: str) -> str:
+        """
+        Extracts the path up to (but excluding) the cell position from the path given
+
+        :param to_extract_from: the path to cut the position away from
+        :return: the cell path except for the final part (the cell position)
+        """
+        return re.match(r"^[\w./]*(?=@)", to_extract_from).group()
+
+    @staticmethod
+    def __disassemble_base_path(to_extract_from: str) -> List[str]:
+        """
+        Extracts the path up to (but excluding) the first cell position and splits it into their path nodes
+
+        :param to_extract_from: the path to disassemble
+        :return: a list of all path nodes except for the first cell position
+        """
+        # use substring to cut away the trailing '/'
+        reduced_path = XlsxProcessor.__extract_base_path(to_extract_from)[:-1]
+        file_path = XlsxProcessor.__extract_file_path(reduced_path)
+        to_return = [file_path]
+        to_return.extend(reduced_path[len(file_path) + 1:].split("/"))
+        return to_return
+
+    @staticmethod
+    def __extract_file_path(path: str) -> str:
+        """
+        Takes the given path and extracts the file path from it
+
+        :param path: a potentially fully qualified path up to a cell position
+        :return: only the part of the path that addresses the xlsx-file
+        """
+        result = re.search(r"^[\w./]*\.xlsx", path)
+        if not result:
+            raise AttributeError("Could not extract a file path from " + path)
+        return result.group(0)
+
+    @staticmethod
+    def __get_cell_line_iterator(sheet: Worksheet, start: CellPosition, is_fixed_row: bool) -> Iterator[Cell]:
+        """
+        Returns an iterator for the cells starting from the given position in the sheet given.
+
+        :param sheet: the sheet the cell line is wanted for
+        :param start: the starting cell for the iteration
+        :param is_fixed_row: if the line shall expand to a row or a column
+        :return: the cells in the given row or column
+        """
+        if is_fixed_row:
+            line = sheet.iter_cols(min_col=column_index_from_string(start.column), min_row=start.row, max_row=start.row)
+        else:
+            line = sheet.iter_rows(min_row=start.row, min_col=column_index_from_string(start.column),
+                                   max_col=column_index_from_string(start.column))
+        return [x[0] for x in line]
