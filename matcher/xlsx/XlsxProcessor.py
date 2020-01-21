@@ -69,7 +69,7 @@ class XlsxProcessor:
 
         :param path: the path to the information in the excel table
         :param name: the name to the value wanted
-        :return: the vlaue addressed
+        :return: the value addressed
         """
         path_parts = path.split(";")
         if len(path_parts) == 3:
@@ -78,7 +78,7 @@ class XlsxProcessor:
             return self._get_from_cross_table(name, path_parts[0], path_parts[1], path_parts[2])
         if len(path_parts) == 2:
             # is a row- or column-table
-            pass
+            return self._get_from_linear_table(name, path_parts[0], path_parts[1])
         else:
             raise AttributeError("Can't decode the type of the table the path '{}' represents".format(path))
 
@@ -442,10 +442,123 @@ class XlsxProcessor:
             value_list.append(value)
         return value_list
 
-    @staticmethod
-    def _get_from_linear_table(to_find: str, file_name: str, sheet_name: str, value_tuple: Tuple[CellPosition, bool],
-                               name_tuple: Tuple[CellPosition, bool], forwarding_index: int = -1) -> List[str]:
-        pass
+    def _get_from_linear_table(self, to_find: str, value_path: str, name_path: str) -> List[str]:
+        """
+        Returns the value(s) from the path data provided for the name given
+
+        :param to_find: the name to get the corresponding value of
+        :param value_path: the path to the values in excel
+        :param name_path: the path to the name in excel
+        :return: a list of values found corresponding to the name (might also be a list of one element)
+        """
+        def contains_forwarding_at(to_check: List[str]) -> int:
+            """
+            Checks if the given path node lists contains a forwarding command and at which node index
+
+            :param to_check: the list of path nodes to analyse
+            :return: the index of the (first) node that contains a forwarding symbol
+            """
+            for i in range(len(to_check)):
+                if self.__config[self.FORWARDING_PATH_KEY] in to_check[i]:
+                    return i
+            return -1
+
+        def extract_value_same_sheet(work_sheet: Worksheet, value_start: CellPosition, name_start: CellPosition,
+                                     fixed_row: bool) -> str:
+            """
+            Extracts the value to the given name from the table the sheet represents
+
+            :param work_sheet: the sheet to check for the name (and therefor value)
+            :param value_start: the cell which indicates from where the values start
+            :param name_start: the position from where the names start
+            :param fixed_row: if search has to be performed column wise or row-wise (in case of false)
+            :return: a list containing one entry which matches the name
+            """
+            for cell in self.__get_cell_line_iterator(work_sheet, name_start, fixed_row):
+                if cell.value is None or cell.value != to_find:
+                    continue
+                if fixed_row:
+                    new_value_position = "{}{}".format(cell.column_letter, value_start.row)
+                else:
+                    new_value_position = "{}{}".format(value_start.column, cell.row)
+                value_cell = work_sheet[new_value_position]
+                if value_start.read_type == CellPropertyType.CONTENT and value_cell.value is not None:
+                    return value_cell.value
+                elif value_start.read_type == CellPropertyType.WIDTH:
+                    return str(self.__get_cell_size(work_sheet, cell))
+                else:
+                    raise AttributeError("Can't decode type: {}. Are the if-branches out-dated?".format(
+                        value_start.read_type))
+            return ""
+
+        def extract_value_list(work_sheet: Worksheet, value_start: CellPosition, fixed_row: bool):
+            """
+            Extracts all values that can be found in the given sheet from the given position on
+
+            :param work_sheet: the table to read
+            :param value_start: the position to start reading from
+            :param fixed_row: if to read column wise or row wise
+            :return: all values that exists under the value position
+            """
+            values: List[str] = []
+            for cell in self.__get_cell_line_iterator(work_sheet, value_start, fixed_row):
+                if cell.value is None:
+                    continue
+                if value_start.read_type == CellPropertyType.CONTENT:
+                    values.append(cell.value)
+                elif value_start.read_type == CellPropertyType.WIDTH:
+                    values.append(str(self.__get_cell_size(work_sheet, cell)))
+                else:
+                    raise AttributeError("Can't decode type: {}. Are the if-branches out-dated?".format(
+                        value_start.read_type))
+            return values
+
+        def extract_forward_index(forward_node: str) -> int:
+            """
+            Returns the index that is encoded in the forwarding identifier
+
+            :param forward_node: the node holding the forward identifier
+            :return: the index it holds
+            """
+            index_str = forward_node[len(self.__config[self.FORWARDING_PATH_KEY]):]
+            return int(index_str)
+
+        value_path_nodes = self.__disassemble_base_path(value_path)
+        forwarding_node_index = contains_forwarding_at(value_path_nodes)
+        if forwarding_node_index == -1:
+            # means no forwarding is present -> all data can be found in one table
+            wb = load_workbook(value_path_nodes[0])
+            sheet = wb[value_path_nodes[1]]
+            value_position, is_fixed_row = CellPosition.from_cell_path_position(value_path)
+            name_position, _ = CellPosition.from_cell_path_position(name_path)
+            result = extract_value_same_sheet(sheet, value_position, name_position, is_fixed_row)
+            if not result:
+                # this is a real error 'cause either the name list is inhomogeneous or the path is incorrect which means
+                # the path training failed
+                raise AttributeError("Could not extract a value from {};{}".format(value_path, name_path))
+            # there can be only one value by this type of list -> wrap it in the list to comply to return value of other
+            # functions
+            return [result]
+        else:
+            # start with tracing the name and work from there
+            name_path_nodes = self.__disassemble_base_path(name_path)
+            name_position, is_fixed_row = CellPosition.from_cell_path_position(name_path)
+            wb = load_workbook(name_path_nodes[0])
+            sheet = wb[name_path_nodes]
+            forwarding_index = extract_forward_index(value_path_nodes[forwarding_node_index])
+            if is_fixed_row:
+                dummy_position = CellPosition(forwarding_index, name_position.column, CellPropertyType.CONTENT)
+            else:
+                dummy_position = CellPosition(name_position.row, get_column_letter(forwarding_index),
+                                              CellPropertyType.CONTENT)
+            # continue with extracting the values -> extract all at once -> this could also be done by returning an
+            # iterator but this is overkill in this scenario
+            file_name = extract_value_same_sheet(sheet, dummy_position, name_position, is_fixed_row)
+            wb = load_workbook(file_name)
+            # the sheet name of the forwarding path comes after the forwarding symbol
+            sheet = wb[name_path_nodes[forwarding_node_index + 1]]
+            value_position, is_fixed_row = CellPosition.from_cell_path_position(value_path)
+            return extract_value_list(sheet, value_position, is_fixed_row)
 
     def __includes_forwarding(self, sheet_name: str) -> Tuple[bool, str]:
         """
@@ -550,24 +663,10 @@ class XlsxProcessor:
         :param to_extract_from: the cell the properties are wanted from
         :return: a list of all properties supported
         """
-        def get_cell_size(to_read_from: Cell) -> int:
-            """
-            Returns the size of the cell at hand in the count of columns
-
-            :param to_read_from: the cell to get the size from
-            :return: the size of the cell if it is merged else 1 is returned
-            """
-            # courtesy goes to: https://stackoverflow.com/a/57525843
-            cell = sheet.cell(to_read_from.row, to_read_from.column)
-            for merged_cells in sheet.merged_cells.ranges:
-                if cell.coordinate in merged_cells:
-                    # as merged cells only expand in columns
-                    return merged_cells.max_col - merged_cells.min_col + 1
-            return 1
         to_return = {to_extract_from.value: CellPropertyType.CONTENT}
         if self.WIDTH_USAGE_LIMITER not in self.__config or sheet.title in self.__config[self.WIDTH_USAGE_LIMITER]:
             # then add the width property
-            to_return[str(get_cell_size(to_extract_from))] = CellPropertyType.WIDTH
+            to_return[str(self.__get_cell_size(sheet, to_extract_from))] = CellPropertyType.WIDTH
         return to_return
 
     @staticmethod
@@ -651,3 +750,20 @@ class XlsxProcessor:
             line = sheet.iter_rows(min_row=start.row, min_col=column_index_from_string(start.column),
                                    max_col=column_index_from_string(start.column))
         return [x[0] for x in line]
+
+    @staticmethod
+    def __get_cell_size(parent: Worksheet, to_read_from: Cell) -> int:
+        """
+        Returns the size of the cell at hand in the count of columns
+
+        :param parent: the sheet that holds the cell in question
+        :param to_read_from: the cell to get the size from
+        :return: the size of the cell if it is merged else 1 is returned
+        """
+        # courtesy goes to: https://stackoverflow.com/a/57525843
+        cell = parent.cell(to_read_from.row, to_read_from.column)
+        for merged_cells in parent.merged_cells.ranges:
+            if cell.coordinate in merged_cells:
+                # as merged cells only expand in columns
+                return merged_cells.max_col - merged_cells.min_col + 1
+        return 1
