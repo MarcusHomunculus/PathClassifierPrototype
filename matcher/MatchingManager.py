@@ -19,6 +19,7 @@ class MatchingManager:
     __sink_path: str
     __nested_sink_dir: str
     __template_path: str
+    __path_dict: Dict[str, str]
 
     def __init__(self, config_path: str, log_file: str = "clustering.log"):
         # TODO: here's some docu missing
@@ -37,16 +38,20 @@ class MatchingManager:
             self.__xlsx_handler.match_given_values_in(pair_list)
         # digest the whole pile of data
         self.__classifier.train()
+        # due to the tree structure of the XML it makes more sense that the XmlProcessor gives the structure and the
+        # XlsxProcessor acts only as server
+        self.__path_dict = {y: x for x, y in self.__classifier.to_dict().items()}
         # generate the template
 
     def generate(self, new_file_path: str, sink_path: str, nested_sink_dir: str = ""):
         # TODO: your docu could stand right here
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
-        path_data = {y: x for x, y in self.__classifier.to_dict().items()}
-        target_classes = self.__xml_handler.group_target_paths(list(path_data.keys()))
+        target_classes = self.__xml_handler.group_target_paths(list(self.__path_dict.keys()))
         for target_class in target_classes:
             target_names = self.__xlsx_handler.get_names(self.translate_to_xlsx_name_path(target_class.root_path))
-            pass
+            for name in target_names:
+                for path in self.__classifier.to_dict().keys():
+                    values = self.__xlsx_handler.receive_for_path()
         # for source_class in self.__xlsx_handler.get_names(list(path_data.values())):
         #     # TODO: create the node here -> create a function that expects the type to generate
         #   for path in target_paths:
