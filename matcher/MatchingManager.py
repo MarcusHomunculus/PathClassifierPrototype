@@ -4,7 +4,7 @@ import logging
 
 from matcher.xlsx.XlsxProcessor import XlsxProcessor
 from matcher.xml.XmlProcessor import XmlProcessor
-from matcher.xml.generation.GeneratorCluster import GeneratorStruct
+from matcher.xml.generation.GeneratorCluster import ValuePathStruct, PathCluster
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 
@@ -51,28 +51,28 @@ class MatchingManager:
 
     def create_build_environment(self, template_path: str) -> None:
         # TODO: I need some docu here
-        self.__xml_handler.build_template(self.__source_path, template_path)
+        self.__template_path = template_path
+        self.__xml_handler.build_template(self.__source_path, self.__template_path)
 
-    def generate(self, new_file_path: str):
-        def expand_path_for(path_template: str, final_count: int, index_offset) -> List[str]:
-            # TODO: doc me
-            # train ensures that there's only one '[i]' in the path
-            pass
+    def generate(self, new_file_path: str) -> int:
         # TODO: your docu could stand right here
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
         target_classes = self.__xml_handler.group_target_paths(list(self.__path_dict.keys()))
+        # group the ValuePathStructs by classes in separate lists -> TODO: their could be a more elegant way?
+        cluster_list: List[List[PathCluster]] = [[]]
+        class_index = 0
         for target_class in target_classes:
             target_names = self.__xlsx_handler.get_names(self._translate_to_xlsx_name_path(target_class.root_path))
             for name in target_names:
+                current = PathCluster(name, target_class.name_path, target_class.root_path)
                 for source_path in target_class.node_paths:
                     values = self.__xlsx_handler.receive_for_path(self.__path_dict[source_path], name,
                                                                   self.__nested_sink_dir)
-                    hello = "world"
-        # for source_class in self.__xlsx_handler.get_names(list(path_data.values())):
-        #     # TODO: create the node here -> create a function that expects the type to generate
-        #   for path in target_paths:
-        #        # TODO: construct the objects
-        #        pass
+                    current.add_pair(ValuePathStruct(name, values, source_path))
+                cluster_list[class_index].append(current)
+            cluster_list.append([])
+            class_index += 1
+        return self.__xml_handler.write_xml(new_file_path, self.__template_path, cluster_list)
 
     def _translate_to_xlsx_name_path(self, xml_base_path: str) -> str:
         """

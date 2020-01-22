@@ -5,10 +5,11 @@ import xml.etree.ElementTree as ElemTree
 from pathlib import Path
 import os
 from xml.dom import minidom
+import copy
 
 from classifier.BinClassifier import BinClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
-from matcher.xml.generation.GeneratorCluster import GeneratorStruct
+from matcher.xml.generation.GeneratorCluster import GeneratorStruct, PathCluster, ValuePathStruct
 
 
 class XmlProcessor:
@@ -97,9 +98,65 @@ class XmlProcessor:
         with open(template_path, "w") as file:
             print(self.__prettify(tree), file=file)
 
-    def write_xml(self, path_to_file: str) -> None:
+    def write_xml(self, path_to_file: str, template_path: str, path_pairs: List[List[PathCluster]]) -> int:
         # TODO: write some nice docu here
-        pass
+        def path_to_indexed(path_to_reduce: str) -> str:
+            """
+            Reduces the given path down to the element which is indexed in path
+            """
+            result = re.match(r"^.*?(?=\[i])", path_to_reduce)
+            if not result:
+                return ""
+            return result.group()
+
+        def path_of_parent(current_path: str) -> str:
+            """
+            Returns the path without the last node of the path
+            """
+            if current_path.endswith("/"):
+                # cut away the last symbol as this breaks the expected behaviour from os
+                current_path = current_path[:-1]
+            # abuse the os package
+            return os.path.dirname(current_path)
+
+        def remove_first_two_nodes(path_to_reduce: str) -> str:
+            """
+            Removes the first 2 nodes of the given path and returns the rest of the path
+            """
+            # TODO: this seems like a very inefficient way -> find a better one
+            result = re.match(r"^\w+/\w+/", path_to_reduce)
+            if not result:
+                raise AttributeError("Path '{}' is incorrect: expecting at least 2 nodes: list anchor & item".format(
+                    path_to_reduce))
+            return path_to_reduce[len(result.group()):]
+
+        tree = ElemTree.parse(template_path)
+        root = tree.getroot()
+        insert_count = []
+        for xml_classes in path_pairs:
+            count = 0
+            for entry in xml_classes:
+                # use the first node as template -> create a working copy: modify it and append it to the existing nodes
+                working_copy = copy.deepcopy(root.findall(".//{}".format(entry.base_path))[0])
+                name_path = remove_first_two_nodes(entry.name_path)
+                name_node: ElemTree.Element = working_copy.findall(".//{}".format(name_path))[0]
+                name_node.text = entry.name
+                # for path_struct in entry.value_path_pairs:
+                #    current_path = remove_first_two_nodes(path_struct.path)
+                # insert the copy
+                current_root = root.findall(".//{}".format(path_of_parent(entry.base_path)))[0]
+                current_root.append(working_copy)
+                # remove the template
+                if count == 0:
+                    current_root.remove(current_root[0])
+                count += 1
+            insert_count.append(count)
+        dir_path = os.path.dirname(template_path)
+        if dir_path:
+            Path(dir_path).mkdir(parents=True, exist_ok=True)
+        with open(path_to_file, "w") as file:
+            print(self.__prettify(tree), file=file)
+        return sum(insert_count)
 
     def group_target_paths(self, unsorted_paths: List[str]) -> List[GeneratorStruct]:
         """
@@ -286,8 +343,11 @@ class XmlProcessor:
         :return: a string which has the well known XML-structure
         """
         # courtesy goes to https://pymotw.com/2/xml/etree/ElementTree/create.html#pretty-printing-xml
+        # and https://stackoverflow.com/a/14493981
         tree_str = ElemTree.tostring(elem.getroot(), encoding='utf-8', method='xml')
         restructured = minidom.parseString(tree_str)
-        restructured_str = restructured.toprettyxml(indent="  ")
-        return restructured.toprettyxml(indent="  ", newl='')
+        # return restructured.toprettyxml(indent="  ", newl="")
+        return '\n'.join([line for line in restructured.toprettyxml(indent="  ").split('\n') if line.strip()])
+
+
 

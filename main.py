@@ -28,6 +28,7 @@ if __name__ == "__main__":
     default_xlsx_path = "data.xlsx"
     default_nested_dir = "sections"
     default_xml_path = "ref.xml"
+    default_target_file = "test.xml"
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
     shall_generate_base = "y"
@@ -64,6 +65,7 @@ if __name__ == "__main__":
     manager.train(default_xml_path, default_xlsx_path, "{}/".format(default_nested_dir))
     manager.dump_classifier_matrix("table")
     manager.create_build_environment("template/template.xml")
-    manager.generate("test.xml")
+    node_count = manager.generate(default_target_file)
+    print("Created '{}' with {} nodes".format(default_target_file, node_count))
 
     print("Done!")

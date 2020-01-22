@@ -145,6 +145,9 @@ class ValuePathStruct:
         self.__offset = offset
         self.__run = 0
 
+    def __str__(self):
+        return self.path
+
     def __iter__(self):
         return self
 
@@ -164,3 +167,21 @@ class ValuePathStruct:
         else:
             return self.values[self.__run - 1], replace_index(self.path, self.__run + self.__offset - 1)
 
+
+class PathCluster:
+
+    name: str
+    name_path: str
+    base_path: str
+    value_path_pairs: List[ValuePathStruct]
+
+    def __init__(self, name: str, name_path: str, base_path: str):
+        # TODO: doc me
+        self.name = name
+        self.name_path = name_path
+        self.base_path = base_path
+        self.value_path_pairs = []
+
+    def add_pair(self, to_add: ValuePathStruct) -> None:
+        # TODO: your docu could stand right here
+        self.value_path_pairs.append(to_add)
