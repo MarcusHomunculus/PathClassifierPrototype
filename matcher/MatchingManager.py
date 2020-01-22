@@ -7,6 +7,7 @@ from matcher.xml.XmlProcessor import XmlProcessor
 from matcher.xml.generation.GeneratorCluster import ValuePathStruct, PathCluster
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
+from matcher.path.FileSystem import create_directories_for
 
 
 class MatchingManager:
@@ -23,14 +24,28 @@ class MatchingManager:
     __path_dict: Dict[str, str]
 
     def __init__(self, config_path: str, log_file: str = "clustering.log"):
-        # TODO: here's some docu missing
+        """
+        The constructor
+
+        :param config_path: the path to the config (toml-) file
+        :param log_file: the file path under which to store the log file
+        """
         self.__classifier = BinClassifier()
         self.__config = self.__read_config(config_path)
+        # prepare the "workspace" for the log
+        create_directories_for(log_file)
         # configure logging
         logging.basicConfig(filename=log_file, level=logging.WARNING)
 
-    def train(self, source_path: str, sink_path: str, nested_sink_dir: str = ""):
-        # TODO: doc me
+    def train(self, source_path: str, sink_path: str, nested_sink_dir: str = "") -> None:
+        """
+        Manages the training process for the classifier by feeding it with data and letting the classifier evaluate the
+        data
+
+        :param source_path: the path of the source (XML-) file
+        :param sink_path: the path of the sink (xlsx-) file
+        :param nested_sink_dir: the path under which forwarded files can be found
+        """
         self.__sink_path = sink_path
         self.__nested_sink_dir = (nested_sink_dir + "/") if not nested_sink_dir.endswith("/") else nested_sink_dir
         self.__source_path = source_path
@@ -50,12 +65,21 @@ class MatchingManager:
                 raise AssertionError("Do not have the means to treat complex paths like '{}'! Aborting".format(path))
 
     def create_build_environment(self, template_path: str) -> None:
-        # TODO: I need some docu here
+        """
+        Creates the files which are required to build a XML-file from "scratch"
+
+        :param template_path: the path under which the XML-template can be stored
+        """
         self.__template_path = template_path
         self.__xml_handler.build_template(self.__source_path, self.__template_path)
 
     def generate(self, new_file_path: str) -> int:
-        # TODO: your docu could stand right here
+        """
+        Creates a new XML-file from the xlsx-files it learned from under the given path
+
+        :param new_file_path: the path under which to store the result
+        :return: the number of nodes added to the generated file
+        """
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
         target_classes = self.__xml_handler.group_target_paths(list(self.__path_dict.keys()))
         # group the ValuePathStructs by classes in separate lists -> TODO: their could be a more elegant way?

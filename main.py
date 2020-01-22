@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # TODO: get a deviating xlsx-path here?
     # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
     # m.test_table_reading()
-    manager = MatchingManager("config.toml")
+    manager = MatchingManager("config.toml", "log/result.log")
     manager.train(default_xml_path, default_xlsx_path, "{}/".format(default_nested_dir))
     manager.dump_classifier_matrix("table")
     manager.create_build_environment("template/template.xml")

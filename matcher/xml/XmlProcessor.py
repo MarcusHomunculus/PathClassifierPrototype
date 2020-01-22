@@ -10,6 +10,7 @@ import copy
 from classifier.BinClassifier import BinClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xml.generation.GeneratorCluster import GeneratorStruct, PathCluster, ValuePathStruct
+from matcher.path.FileSystem import create_directories_for
 
 
 class XmlProcessor:
@@ -91,15 +92,20 @@ class XmlProcessor:
             list_root = root.findall(".//{}".format(main_node))[0]
             remove_if_multiple_exist(list_root)
         self.__template_path = template_path
-        dir_path = os.path.dirname(template_path)
-        if dir_path:
-            Path(dir_path).mkdir(parents=True, exist_ok=True)
+        create_directories_for(template_path)
         # tree.write(template_path)
         with open(template_path, "w") as file:
             print(self.__prettify(tree), file=file)
 
-    def write_xml(self, path_to_file: str, template_path: str, path_pairs: List[List[PathCluster]]) -> int:
-        # TODO: write some nice docu here
+    def write_xml(self, target_file: str, template_path: str, path_pairs: List[List[PathCluster]]) -> int:
+        """
+        Writes the received data into the specified file by using the file under template_path as blue-print
+
+        :param target_file: the path under which the result is to store
+        :param template_path: the path to the template file
+        :param path_pairs: the data to fill the template with
+        :return: the number of nodes inserted into the final file
+        """
         def contains_index(to_check: str) -> bool:
             """
             Returns if the index identifier can be found in the given string
@@ -128,10 +134,8 @@ class XmlProcessor:
                 current_root.append(working_copy)
                 count += 1
             insert_count.append(count)
-        dir_path = os.path.dirname(template_path)
-        if dir_path:
-            Path(dir_path).mkdir(parents=True, exist_ok=True)
-        with open(path_to_file, "w") as file:
+        create_directories_for(target_file)
+        with open(target_file, "w") as file:
             print(self.__prettify(tree), file=file)
         return sum(insert_count)
 
@@ -338,12 +342,7 @@ class XmlProcessor:
         # if there's no node to find there's no reason to start looking
         if not relative_path:
             return search_anchor
-        # TODO: for debug only
-        result = search_anchor.findall(".//{}".format(relative_path))
-        if not result:
-            hello = "world"
-        return result[0]
-        # return search_anchor.findall(".//{}".format(relative_path))[0]
+        return search_anchor.findall(".//{}".format(relative_path))[0]
 
     @staticmethod
     def __remove_first_two_nodes(path_to_reduce: str) -> str:
@@ -416,7 +415,13 @@ class XmlProcessor:
 
     @staticmethod
     def __copy_template_and_delete(base_node: ElemTree.Element, node_path: str) -> ElemTree.Element:
-        # TODO: doc me
+        """
+        Creates a deep copy of the node under the specified path and deletes the original while returning the copy
+
+        :param base_node: the path from which the node path is valid
+        :param node_path: the path of the node to copy
+        :return: a deep copy of the node under the path
+        """
         template = XmlProcessor.__first_node_of(base_node, node_path)
         to_return = copy.deepcopy(template)
         # remove the template
@@ -426,18 +431,20 @@ class XmlProcessor:
 
     @staticmethod
     def __set_values_on(main_node: ElemTree.Element, generator: ValuePathStruct) -> None:
-        # TODO: I need some docu here
-        def path_without_index(path_to_reduce: str) -> str:
-            """
-            Reduces the given path down to the element which is indexed in path
-            """
-            result = re.match(r"^.*?(?=\[[i\d]+])", path_to_reduce)
-            if not result:
-                return ""
-            return result.group()
+        """
+        If multiple values have to be set on indexed nodes this function will take of it
 
+        :param main_node: the node which hosts the indexed nodes
+        :param generator: the container holding the indexed path(s) and their values
+        """
         def split_on_index(path_to_split: str) -> Tuple[str, str]:
-            # TODO: write some nice docu here
+            """
+            Splits the given path at the (single!!) index identifier and returns the resulting paths left and right of
+            the identifier
+
+            :param path_to_split: the path to separate
+            :return: a tuple of the 2 resulting paths
+            """
             parts = path_to_split.split("[i]")
             if len(parts) != 2:
                 raise AttributeError("Could not split '{}' on the index identifier".format(path_to_split))
@@ -471,4 +478,3 @@ class XmlProcessor:
         Returns if the path at hand addresses an attribute or not
         """
         return "@" in to_test
-
