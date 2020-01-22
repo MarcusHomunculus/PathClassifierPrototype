@@ -109,15 +109,21 @@ class XmlProcessor:
                 return ""
             return result.group()
 
-        def path_of_parent(current_path: str) -> str:
+        def contains_index(to_check: str) -> bool:
+            """
+            Returns if the index identifier can be found in the given string
+            """
+            return "[i]" in to_check
+
+        def path_of_parent(path_to_reduce: str) -> str:
             """
             Returns the path without the last node of the path
             """
-            if current_path.endswith("/"):
+            if path_to_reduce.endswith("/"):
                 # cut away the last symbol as this breaks the expected behaviour from os
-                current_path = current_path[:-1]
+                path_to_reduce = path_to_reduce[:-1]
             # abuse the os package
-            return os.path.dirname(current_path)
+            return os.path.dirname(path_to_reduce)
 
         def remove_first_two_nodes(path_to_reduce: str) -> str:
             """
@@ -130,6 +136,49 @@ class XmlProcessor:
                     path_to_reduce))
             return path_to_reduce[len(result.group()):]
 
+        def first_node_of(search_anchor: ElemTree.Element, relative_path: str) -> ElemTree.Element:
+            """
+            Returns the first node that can be found under the given path in the given node
+            """
+            # if there's no node to find there's no reason to start looking
+            if not relative_path:
+                return search_anchor
+            return search_anchor.findall(".//{}".format(relative_path))[0]
+
+        def set_depending_on_path(working_node: ElemTree.Element, working_path: str, value: str) -> None:
+            """
+            Sets the value on the given path in the node depending on the path as value or attribute
+
+            :param working_node: the node to search for the path
+            :param working_path: the path to the value to set
+            :param value: the value to write
+            """
+            def is_attribute_path(to_test: str) -> bool:
+                """
+                Returns if the path at hand addresses an attribute or not
+                """
+                return "@" in to_test
+
+            def split_on_attribute(to_split: str) -> Tuple[str, str]:
+                """
+                Splits the given path if it addresses an attribute and returns the node path and the attribute name as
+                tuple
+                """
+                # path can have only one anyway
+                parts = to_split.split("@")
+                if len(parts) != 2:
+                    raise AttributeError("Cant split '{}' into its path and its attribute".format(to_split))
+                return (parts[0])[:-1], parts[1]    # remove the trailing '/' in the path
+
+            if not is_attribute_path(working_path):
+                # easy: just set the value and be done with it
+                to_set = first_node_of(working_node, working_path)
+                to_set.text = value
+                return
+            node_path, node_attribute = split_on_attribute(working_path)
+            to_set = first_node_of(working_node, node_path)
+            to_set.attrib[node_attribute] = value
+
         tree = ElemTree.parse(template_path)
         root = tree.getroot()
         insert_count = []
@@ -137,12 +186,19 @@ class XmlProcessor:
             count = 0
             for entry in xml_classes:
                 # use the first node as template -> create a working copy: modify it and append it to the existing nodes
-                working_copy = copy.deepcopy(root.findall(".//{}".format(entry.base_path))[0])
-                name_path = remove_first_two_nodes(entry.name_path)
-                name_node: ElemTree.Element = working_copy.findall(".//{}".format(name_path))[0]
+                # working_copy = copy.deepcopy(root.findall(".//{}".format(entry.base_path))[0])
+                working_copy = copy.deepcopy(first_node_of(root, entry.base_path))
+                # name_path = remove_first_two_nodes(entry.name_path)
+                # name_node: ElemTree.Element = working_copy.findall(".//{}".format(name_path))[0]
+                name_node = first_node_of(working_copy, remove_first_two_nodes(entry.name_path))
                 name_node.text = entry.name
-                # for path_struct in entry.value_path_pairs:
-                #    current_path = remove_first_two_nodes(path_struct.path)
+                for path_struct in entry.value_path_pairs:
+                    current_path = remove_first_two_nodes(path_struct.path)
+                    if contains_index(current_path):
+                        # now only god can help
+                        pass
+                    else:
+                        set_depending_on_path(working_copy, current_path, path_struct.values[0])
                 # insert the copy
                 current_root = root.findall(".//{}".format(path_of_parent(entry.base_path)))[0]
                 current_root.append(working_copy)
