@@ -100,111 +100,32 @@ class XmlProcessor:
 
     def write_xml(self, path_to_file: str, template_path: str, path_pairs: List[List[PathCluster]]) -> int:
         # TODO: write some nice docu here
-        def path_to_indexed(path_to_reduce: str) -> str:
-            """
-            Reduces the given path down to the element which is indexed in path
-            """
-            result = re.match(r"^.*?(?=\[i])", path_to_reduce)
-            if not result:
-                return ""
-            return result.group()
-
         def contains_index(to_check: str) -> bool:
             """
             Returns if the index identifier can be found in the given string
             """
             return "[i]" in to_check
 
-        def path_of_parent(path_to_reduce: str) -> str:
-            """
-            Returns the path without the last node of the path
-            """
-            if path_to_reduce.endswith("/"):
-                # cut away the last symbol as this breaks the expected behaviour from os
-                path_to_reduce = path_to_reduce[:-1]
-            # abuse the os package
-            return os.path.dirname(path_to_reduce)
-
-        def remove_first_two_nodes(path_to_reduce: str) -> str:
-            """
-            Removes the first 2 nodes of the given path and returns the rest of the path
-            """
-            # TODO: this seems like a very inefficient way -> find a better one
-            result = re.match(r"^\w+/\w+/", path_to_reduce)
-            if not result:
-                raise AttributeError("Path '{}' is incorrect: expecting at least 2 nodes: list anchor & item".format(
-                    path_to_reduce))
-            return path_to_reduce[len(result.group()):]
-
-        def first_node_of(search_anchor: ElemTree.Element, relative_path: str) -> ElemTree.Element:
-            """
-            Returns the first node that can be found under the given path in the given node
-            """
-            # if there's no node to find there's no reason to start looking
-            if not relative_path:
-                return search_anchor
-            return search_anchor.findall(".//{}".format(relative_path))[0]
-
-        def set_depending_on_path(working_node: ElemTree.Element, working_path: str, value: str) -> None:
-            """
-            Sets the value on the given path in the node depending on the path as value or attribute
-
-            :param working_node: the node to search for the path
-            :param working_path: the path to the value to set
-            :param value: the value to write
-            """
-            def is_attribute_path(to_test: str) -> bool:
-                """
-                Returns if the path at hand addresses an attribute or not
-                """
-                return "@" in to_test
-
-            def split_on_attribute(to_split: str) -> Tuple[str, str]:
-                """
-                Splits the given path if it addresses an attribute and returns the node path and the attribute name as
-                tuple
-                """
-                # path can have only one anyway
-                parts = to_split.split("@")
-                if len(parts) != 2:
-                    raise AttributeError("Cant split '{}' into its path and its attribute".format(to_split))
-                return (parts[0])[:-1], parts[1]    # remove the trailing '/' in the path
-
-            if not is_attribute_path(working_path):
-                # easy: just set the value and be done with it
-                to_set = first_node_of(working_node, working_path)
-                to_set.text = value
-                return
-            node_path, node_attribute = split_on_attribute(working_path)
-            to_set = first_node_of(working_node, node_path)
-            to_set.attrib[node_attribute] = value
-
         tree = ElemTree.parse(template_path)
         root = tree.getroot()
         insert_count = []
         for xml_classes in path_pairs:
             count = 0
+            # all entries represent the same type so just pick the first
+            node_template = self.__copy_template_and_delete(root, xml_classes[0].base_path)
             for entry in xml_classes:
                 # use the first node as template -> create a working copy: modify it and append it to the existing nodes
-                # working_copy = copy.deepcopy(root.findall(".//{}".format(entry.base_path))[0])
-                working_copy = copy.deepcopy(first_node_of(root, entry.base_path))
-                # name_path = remove_first_two_nodes(entry.name_path)
-                # name_node: ElemTree.Element = working_copy.findall(".//{}".format(name_path))[0]
-                name_node = first_node_of(working_copy, remove_first_two_nodes(entry.name_path))
+                working_copy = copy.deepcopy(node_template)
+                name_node = self.__first_node_of(working_copy, self.__remove_first_two_nodes(entry.name_path))
                 name_node.text = entry.name
                 for path_struct in entry.value_path_pairs:
-                    current_path = remove_first_two_nodes(path_struct.path)
-                    if contains_index(current_path):
-                        # now only god can help
-                        pass
+                    if contains_index(path_struct.path):
+                        self.__set_values_on(working_copy, path_struct)
                     else:
-                        set_depending_on_path(working_copy, current_path, path_struct.values[0])
+                        self.__set_depending_on_path(working_copy, path_struct.path, path_struct.values[0])
                 # insert the copy
-                current_root = root.findall(".//{}".format(path_of_parent(entry.base_path)))[0]
+                current_root = self.__first_node_of(root, self.__path_of_parent(entry.base_path))
                 current_root.append(working_copy)
-                # remove the template
-                if count == 0:
-                    current_root.remove(current_root[0])
                 count += 1
             insert_count.append(count)
         dir_path = os.path.dirname(template_path)
@@ -405,5 +326,149 @@ class XmlProcessor:
         # return restructured.toprettyxml(indent="  ", newl="")
         return '\n'.join([line for line in restructured.toprettyxml(indent="  ").split('\n') if line.strip()])
 
+    @staticmethod
+    def __first_node_of(search_anchor: ElemTree.Element, relative_path: str) -> ElemTree.Element:
+        """
+        Returns the first node that can be found under the given path in the given node
 
+        :param search_anchor: the node to search for the wanted path
+        :param relative_path: the path to the desired node from the anchor on
+        :return: the first element that could be found
+        """
+        # if there's no node to find there's no reason to start looking
+        if not relative_path:
+            return search_anchor
+        # TODO: for debug only
+        result = search_anchor.findall(".//{}".format(relative_path))
+        if not result:
+            hello = "world"
+        return result[0]
+        # return search_anchor.findall(".//{}".format(relative_path))[0]
+
+    @staticmethod
+    def __remove_first_two_nodes(path_to_reduce: str) -> str:
+        """
+        Removes the first 2 nodes of the given path and returns the rest of the path
+        """
+        # TODO: this seems like a very inefficient way -> find a better one
+        result = re.match(r"^\w+/\w+/", path_to_reduce)
+        if not result:
+            raise AttributeError("Path '{}' is incorrect: expecting at least 2 nodes: list anchor & item".format(
+                path_to_reduce))
+        return path_to_reduce[len(result.group()):]
+
+    @staticmethod
+    def __set_depending_on_path(working_node: ElemTree.Element, path: str, value: str,
+                                remove_first_nodes: bool = True) -> None:
+        """
+        Sets the value on the given path in the node depending on the path as value or attribute
+
+        :param working_node: the node to search for the path
+        :param path: the path which describes where to set the value in the working_node
+        :param value: the value to set to
+        """
+        def split_on_attribute(to_split: str) -> Tuple[str, str]:
+            """
+            Splits the given path if it addresses an attribute and returns the node path and the attribute name as
+            tuple
+            """
+            # path can have only one anyway
+            parts = to_split.split("@")
+            if len(parts) != 2:
+                raise AttributeError("Cant split '{}' into its path and its attribute".format(to_split))
+            return (parts[0])[:-1], parts[1]  # remove the trailing '/' in the path
+
+        if not path:
+            # the node itself is addressed
+            working_node.text = value
+            return
+        if path.startswith("@"):
+            # only set the attribute on the the node itself
+            attribute_name = path[1:]
+            working_node.attrib[attribute_name] = value
+            return
+        # else it is a longer path
+        if remove_first_nodes:
+            path = XmlProcessor.__remove_first_two_nodes(path)
+
+        if not XmlProcessor.__is_attribute_path(path):
+            # easy: just set the value and be done with it
+            to_set = XmlProcessor.__first_node_of(working_node, path)
+            to_set.text = value
+            return
+        node_path, node_attribute = split_on_attribute(path)
+        to_set = XmlProcessor.__first_node_of(working_node, node_path)
+        to_set.attrib[node_attribute] = value
+
+    @staticmethod
+    def __path_of_parent(path_to_reduce: str) -> str:
+        """
+        Returns the path without the last node of the path
+
+        :param path_to_reduce: the path which should be reduced for the last node
+        :return: the path without the last node
+        """
+        if path_to_reduce.endswith("/"):
+            # cut away the last symbol as this breaks the expected behaviour from os
+            path_to_reduce = path_to_reduce[:-1]
+        # abuse the os package
+        return os.path.dirname(path_to_reduce)
+
+    @staticmethod
+    def __copy_template_and_delete(base_node: ElemTree.Element, node_path: str) -> ElemTree.Element:
+        # TODO: doc me
+        template = XmlProcessor.__first_node_of(base_node, node_path)
+        to_return = copy.deepcopy(template)
+        # remove the template
+        parent = XmlProcessor.__first_node_of(base_node, XmlProcessor.__path_of_parent(node_path))
+        parent.remove(template)
+        return to_return
+
+    @staticmethod
+    def __set_values_on(main_node: ElemTree.Element, generator: ValuePathStruct) -> None:
+        # TODO: I need some docu here
+        def path_without_index(path_to_reduce: str) -> str:
+            """
+            Reduces the given path down to the element which is indexed in path
+            """
+            result = re.match(r"^.*?(?=\[[i\d]+])", path_to_reduce)
+            if not result:
+                return ""
+            return result.group()
+
+        def split_on_index(path_to_split: str) -> Tuple[str, str]:
+            # TODO: write some nice docu here
+            parts = path_to_split.split("[i]")
+            if len(parts) != 2:
+                raise AttributeError("Could not split '{}' on the index identifier".format(path_to_split))
+            if not parts[1]:
+                # means no path after the index
+                return parts[0], ""
+            return parts[0], (parts[1])[1:]
+
+        if XmlProcessor.__is_attribute_path(generator.path):
+            # the higher instance ensures that values come before attributes -> all nodes already exist
+            # XPath starts counting with 1
+            generator.adapt_offset_to(1)
+            for pair in generator:
+                value, path = pair
+                XmlProcessor.__set_depending_on_path(main_node, XmlProcessor.__remove_first_two_nodes(path), value,
+                                                     False)
+            return
+        node_path, inner_node_path = split_on_index(generator.path)
+        collect_node = XmlProcessor.__first_node_of(main_node, XmlProcessor.__path_of_parent(
+            XmlProcessor.__remove_first_two_nodes(node_path)))
+        template = XmlProcessor.__copy_template_and_delete(main_node, XmlProcessor.__remove_first_two_nodes(node_path))
+        for pair in generator:
+            working_copy = copy.deepcopy(template)
+            value, _ = pair
+            XmlProcessor.__set_depending_on_path(working_copy, inner_node_path, value, False)
+            collect_node.append(working_copy)
+
+    @staticmethod
+    def __is_attribute_path(to_test: str) -> bool:
+        """
+        Returns if the path at hand addresses an attribute or not
+        """
+        return "@" in to_test
 

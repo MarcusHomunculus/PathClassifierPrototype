@@ -162,10 +162,18 @@ class ValuePathStruct:
         if self.__run >= len(self.values):
             raise StopIteration()
         self.__run += 1
-        if self.__index_identifier not in self.path or len(self.values) < 2:
+        if self.__index_identifier not in self.path:
             return self.values[0], self.path
         else:
             return self.values[self.__run - 1], replace_index(self.path, self.__run + self.__offset - 1)
+
+    def adapt_offset_to(self, new_offset: int) -> None:
+        """
+        Allows to adapt the offset for the path generator after the constructor has been called
+
+        :param new_offset: the value to set the offset to
+        """
+        self.__offset = new_offset
 
 
 class PathCluster:
@@ -176,12 +184,22 @@ class PathCluster:
     value_path_pairs: List[ValuePathStruct]
 
     def __init__(self, name: str, name_path: str, base_path: str):
-        # TODO: doc me
+        """
+        The constructor
+
+        :param name: the name to represent
+        :param name_path: the path to the URI
+        :param base_path: the basic path to the elements
+        """
         self.name = name
         self.name_path = name_path
         self.base_path = base_path
         self.value_path_pairs = []
 
     def add_pair(self, to_add: ValuePathStruct) -> None:
-        # TODO: your docu could stand right here
+        """
+        Adds a ValuePathStruct to the list of value_path_pairs
+
+        :param to_add: the struct to add
+        """
         self.value_path_pairs.append(to_add)

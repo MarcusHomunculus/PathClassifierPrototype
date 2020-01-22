@@ -59,9 +59,10 @@ class MatchingManager:
         # the XML-modules knows their paths best -> so let it do some meaningful ordering of their paths
         target_classes = self.__xml_handler.group_target_paths(list(self.__path_dict.keys()))
         # group the ValuePathStructs by classes in separate lists -> TODO: their could be a more elegant way?
-        cluster_list: List[List[PathCluster]] = [[]]
+        cluster_list: List[List[PathCluster]] = []
         class_index = 0
         for target_class in target_classes:
+            cluster_list.append([])
             target_names = self.__xlsx_handler.get_names(self._translate_to_xlsx_name_path(target_class.root_path))
             for name in target_names:
                 current = PathCluster(name, target_class.name_path, target_class.root_path)
@@ -70,7 +71,6 @@ class MatchingManager:
                                                                   self.__nested_sink_dir)
                     current.add_pair(ValuePathStruct(name, values, source_path))
                 cluster_list[class_index].append(current)
-            cluster_list.append([])
             class_index += 1
         return self.__xml_handler.write_xml(new_file_path, self.__template_path, cluster_list)
 
