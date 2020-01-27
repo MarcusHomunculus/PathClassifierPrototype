@@ -108,8 +108,11 @@ class XmlDiffer:
         if to_process_1.attrib or to_process_2.attrib:
             # compare the attributes
             if to_process_1.attrib and to_process_2.attrib:
-                pass
-            pass
+                compare_attributes(to_process_1.attrib, to_process_2.attrib, current_path)
+            elif to_process_1.attrib:
+                self.__sink.error("Missing attributes for node {} in file {}".format(current_path, second_name))
+            else:
+                self.__sink.error("Missing attributes for node {} in file {}".format(current_path, first_name))
         # check if it is a list of nodes with the same name or not
         needs_indexing = has_item_list(to_process_1)
         if needs_indexing:
@@ -118,4 +121,20 @@ class XmlDiffer:
             pass
         else:
             # just go deeper the rabbit hole -> update the path
-            pass
+            processed_nodes = []
+            for child in to_process_1:
+                new_path = "{}/{}".format(current_path, child.tag)
+                # find the counterpart
+                other = to_process_2.find(child.tag)
+                if other is None:
+                    self.__sink.error("Missing node {} in {}".format(new_path, second_name))
+                processed_nodes.append(child.tag)
+                self._process_node(child, other, new_path, first_name, second_name)
+            # check the nodes from file 2 which might have been missed
+            tags = map(lambda x: x.tag, to_process_2.iter())
+            for tag in processed_nodes:
+                if tag in tags:
+                    processed_nodes.remove(tag)
+            # report the leftovers
+            for tag_name in tags:
+                self.__sink.error("Missing node {}/{} in {}".format(current_path, tag_name, first_name))
