@@ -69,7 +69,6 @@ if __name__ == "__main__":
     node_count = manager.generate(default_target_file)
     print("Created '{}' with {} nodes".format(default_target_file, node_count))
 
-    print("Start comparing results")
     differ = XmlDiffer("log/compare.log")
     differ.compare(default_xml_path, default_target_file)
 

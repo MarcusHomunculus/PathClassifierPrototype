@@ -88,10 +88,10 @@ class XmlDiffer:
                 processed_nodes.append(child.tag)
                 self._process_node(child, other, new_path, first_name, second_name)
             # check the nodes from file 2 which might have been missed
-            tags = map(lambda x: x.tag, list(node_2))
+            tags = list(map(lambda x: x.tag, list(node_2)))
             for tag in processed_nodes:
                 if tag in tags:
-                    processed_nodes.remove(tag)
+                    tags.remove(tag)
             # report the leftovers
             for tag_name in tags:
                 self.__sink.error("Missing node {}/{} in {}".format(current_path, tag_name, first_name))
@@ -104,26 +104,34 @@ class XmlDiffer:
             # TODO: continue here
             pass
 
-        if not to_process_1.text.isspace() or not to_process_2.text.isspace():
+        def contains_value(to_test: ElemTree.Element) -> bool:
+            return not to_test.text.isspace()
+
+        if contains_value(to_process_1) or contains_value(to_process_2):
             # if either one of them is not empty
-            pass
+            if contains_value(to_process_1) and contains_value(to_process_2):
+                if to_process_1.text != to_process_2.text:
+                    self.__sink.error("Mismatch in values of {}. {}: {} vs. {}: {}".format(current_path, first_name,
+                                      to_process_1.text, second_name, to_process_2.text))
+            else:
+                self.__sink.error("Missing value in node {} in {}".format(current_path,
+                                  second_name if contains_value(to_process_1) else second_name))
         if to_process_1.attrib or to_process_2.attrib:
             # compare the attributes
             if to_process_1.attrib and to_process_2.attrib:
                 compare_attributes(to_process_1.attrib, to_process_2.attrib, current_path)
-            elif to_process_1.attrib:
-                self.__sink.error("Missing attributes for node {} in file {}".format(current_path, second_name))
             else:
-                self.__sink.error("Missing attributes for node {} in file {}".format(current_path, first_name))
+                self.__sink.error("Missing attributes for node {} in file {}".format(current_path,
+                                  second_name if to_process_1.attrib else first_name))
         # check if children exist at all
         if not to_process_1 or not to_process_2:
             if not to_process_1 and not to_process_2:
                 return  # no children exist
             if not to_process_1:
-                self.__collect_missing_children(to_process_2)
+                self.__collect_missing_children(to_process_2, first_name)
                 return
             if not to_process_2:
-                self.__collect_missing_children(to_process_1)
+                self.__collect_missing_children(to_process_1, second_name)
                 return
         # with children existing check if it is a list of nodes with the all-the-same-name or not
         needs_indexing = self.__has_item_list(to_process_1)
@@ -134,7 +142,7 @@ class XmlDiffer:
             # just go deeper the rabbit hole -> update the path
             process_different_types(to_process_1, to_process_2)
 
-    def __collect_missing_children(self, other_node) -> None:
+    def __collect_missing_children(self, other_node, source_name: str) -> None:
         pass
 
     @staticmethod
@@ -148,7 +156,8 @@ class XmlDiffer:
         element_hash = hash(to_hash.tag)
         # treat eventual whitespaces equal
         element_hash += hash(to_hash.text) if not to_hash.text.isspace() else 0
-        element_hash += 0 if not to_hash.attrib else hash(to_hash.attrib)
+        # inspired by https://stackoverflow.com/a/1151705
+        element_hash += 0 if not to_hash.attrib else hash(tuple(sorted(to_hash.attrib.items())))
         return element_hash
 
     @staticmethod
