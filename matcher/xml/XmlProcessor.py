@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Iterator, Set
 import re
 import xml.etree.ElementTree as ElemTree
-from pathlib import Path
 import os
 from xml.dom import minidom
 import copy
@@ -10,7 +9,7 @@ import copy
 from classifier.BinClassifier import BinClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xml.generation.GeneratorCluster import GeneratorStruct, PathCluster, ValuePathStruct
-from matcher.path.FileSystem import create_directories_for
+from creation.FileSystem import create_directories_for
 
 
 class XmlProcessor:

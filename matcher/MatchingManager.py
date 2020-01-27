@@ -6,8 +6,7 @@ from matcher.xml.XmlProcessor import XmlProcessor
 from matcher.xml.generation.GeneratorCluster import ValuePathStruct, PathCluster
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
-from matcher.path.FileSystem import create_directories_for
-from creation.ConfigDict import config_from_file
+from creation.FileSystem import create_directories_for, config_from_file
 
 
 class MatchingManager:
