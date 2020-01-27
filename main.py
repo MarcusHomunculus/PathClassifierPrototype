@@ -4,6 +4,7 @@ The main routine
 
 from creation import WorkerCreator, SectionCreator, Creator
 from matcher.MatchingManager import MatchingManager
+from evaluation.Differ import XmlDiffer
 
 workerFile = "workers.json"
 sectionFile = "sections.json"
@@ -67,5 +68,9 @@ if __name__ == "__main__":
     manager.create_build_environment("template/template.xml")
     node_count = manager.generate(default_target_file)
     print("Created '{}' with {} nodes".format(default_target_file, node_count))
+
+    print("Start comparing results")
+    differ = XmlDiffer("log/compare.log")
+    differ.compare(default_xml_path, default_target_file)
 
     print("Done!")
