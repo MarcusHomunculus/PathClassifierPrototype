@@ -1,5 +1,4 @@
 from typing import Dict, List
-import toml
 import logging
 
 from matcher.xlsx.XlsxProcessor import XlsxProcessor
@@ -8,6 +7,7 @@ from matcher.xml.generation.GeneratorCluster import ValuePathStruct, PathCluster
 from matcher.visualization.HtmlWriter import HtmlWriter
 from classifier.BinClassifier import BinClassifier
 from matcher.path.FileSystem import create_directories_for
+from creation.ConfigDict import config_from_file
 
 
 class MatchingManager:
@@ -31,7 +31,7 @@ class MatchingManager:
         :param log_file: the file path under which to store the log file
         """
         self.__classifier = BinClassifier()
-        self.__config = self.__read_config(config_path)
+        self.__config = config_from_file(config_path)
         # prepare the "workspace" for the log
         create_directories_for(log_file)
         # configure logging
@@ -124,16 +124,3 @@ class MatchingManager:
         raw_data = self.__classifier.dump_raw_data()
         writer = HtmlWriter(raw_data)
         writer.dump_as_html(file)
-
-    @staticmethod
-    def __read_config(path_to_file: str) -> Dict[str, str]:
-        """
-        Reads in the config file
-
-        :param path_to_file: the path to the TOML file to read
-        :return: the key-value-pairs extracted from the config file
-        """
-        config = {}
-        with open(path_to_file, "r", encoding="utf-8") as c:
-            config.update(toml.load(c))
-        return config
