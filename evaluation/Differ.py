@@ -180,7 +180,12 @@ class XmlDiffer:
                 # this means the list children from node 2 is exhausted -> break here and continue with the error
                 # reporting
                 break
-            # TODO: evaluate the processed_hashes list
+            result_1 = len(list(node_1)) - len(processed_hashes_1)
+            if result_1 > 0:
+                self.__sink.error("Have {} leftover node(s) under {} in {}".format(result_1, current_path, first_name))
+            result_2 = len(list(node_2)) - len(processed_hashes_2)
+            if result_2 > 0:
+                self.__sink.error("Have {} leftover node(s) under {} in {}".format(result_2, current_path, second_name))
             pass
 
         def contains_value(to_test: ElemTree.Element) -> bool:
