@@ -1,6 +1,6 @@
 import logging
 import xml.etree.ElementTree as ElemTree
-from typing import Dict
+from typing import Dict, Tuple, List
 
 from creation.FileSystem import create_directories_for
 
@@ -96,15 +96,97 @@ class XmlDiffer:
             for tag_name in tags:
                 self.__sink.error("Missing node {}/{} in {}".format(current_path, tag_name, first_name))
 
+        def calculate_error_distance(reference_node: ElemTree.Element, distance_to: ElemTree.Element) -> int:
+            # TODO: write some awesome docu here
+            def zero_or_greater(to_eval: int) -> int:
+                # TODO: I short doc string would help here a lot
+                return to_eval if to_eval > 0 else 0
+
+            distance = 0
+            if reference_node.text.strip() != distance_to.text.strip():
+                distance += 1
+            for key in reference_node.attrib.keys():
+                if key not in distance_to.attrib:
+                    distance += 1
+                    continue
+                if reference_node.attrib[key] != distance_to.attrib[key]:
+                    distance_to += 1
+            distance += zero_or_greater(len(reference_node.attrib) - len(distance_to.attrib))
+            return distance
+
         def process_same_types(node_1: ElemTree.Element, node_2: ElemTree.Element) -> None:
-            # TODO: doc me
-            # -> create a hash of the nodes and sort by the hash
-            child_list_1 = sorted(node_1, key=lambda c: self.__create_hash(c))
-            child_list_2 = sorted(node_2, key=lambda c: self.__create_hash(c))
-            # TODO: continue here
+            """
+            Tries to match nodes with another (when all child-nodes of the given one have children with the same name)
+            in order to compare them properly
+
+            :param node_1: the first trees node
+            :param node_2: the second trees node
+            """
+            def find_match_in_node_2(to_find: int) -> Tuple[bool, ElemTree.Element]:
+                """
+                Goes through the children of the 2nd node given and returns the one that matches. If none could be
+                found False and a dummy node is returned
+
+                :param to_find: the hash of the node to find in the 2nd nodes children
+                :return: true and the node in case of success else false and a dummy node
+                """
+                for child_tmp in node_2:
+                    if self.__create_hash(child_tmp) == to_find:
+                        return True, child_tmp
+                return False, node_2[0]
+
+            def find_alternative(given: ElemTree.Element, blacklist: List[int]) -> Tuple[bool, ElemTree.Element]:
+                """
+                Goes through the list of child nodes of the second node and returns the one with the lowest error
+                distance that haven't been processed yet
+
+                :param given: the node of which the alternative shall be found
+                :param blacklist: the list of node hashes that have already been processed
+                :return: true and the match in case of a low error distance else false and a dummy node
+                """
+                min_distance = -1
+                min_child = node_2[0]
+                for candidate in node_2:
+                    if self.__create_hash(candidate) in blacklist:
+                        continue
+                    distance = calculate_error_distance(given, candidate)
+                    if distance >= min_distance > 0:
+                        continue
+                    min_distance = distance
+                    min_child = candidate
+                if min_distance > 0:
+                    return True, min_child
+                return False, min_child
+
+            # all nodes have the same tag name so just pick the first as template
+            new_path = "{}/{}".format(current_path, node_1[0].tag)
+            processed_hashes_1 = []     # this list holds the consumed children from node 1
+            processed_hashes_2 = []     # this list holds the consumed children from node 2
+            for list_child in node_1:
+                child_hash = self.__create_hash(list_child)
+                success, other = find_match_in_node_2(child_hash)
+                if success:
+                    self._process_node(list_child, other, new_path, first_name, second_name)
+                    processed_hashes_1.append(child_hash)
+                    processed_hashes_2.append(child_hash)
+                    continue
+                # find an alternative
+                success, alternative = find_alternative(list_child, processed_hashes_2)
+                if success:
+                    self._process_node(list_child, alternative, new_path, first_name, second_name)
+                    processed_hashes_1.append(child_hash)
+                    processed_hashes_2.append(self.__create_hash(alternative))
+                    continue
+                # this means the list children from node 2 is exhausted -> break here and continue with the error
+                # reporting
+                break
+            # TODO: evaluate the processed_hashes list
             pass
 
         def contains_value(to_test: ElemTree.Element) -> bool:
+            """
+            Returns if the given node contains an actual value or not
+            """
             return not to_test.text.isspace()
 
         if contains_value(to_process_1) or contains_value(to_process_2):
