@@ -100,10 +100,10 @@ class XmlDiffer:
             if not to_process_1 and not to_process_2:
                 return  # no children exist
             if not to_process_1:
-                self.__collect_missing_children(to_process_2, self.__current_first)
+                self.__collect_missing_children(to_process_2, self.__current_first, current_path)
                 return
             if not to_process_2:
-                self.__collect_missing_children(to_process_1, self.__current_second)
+                self.__collect_missing_children(to_process_1, self.__current_second, current_path)
                 return
         # with children existing check if it is a list of nodes with the all-the-same-name or not
         needs_indexing = self.__has_item_list(to_process_1)
@@ -118,8 +118,17 @@ class XmlDiffer:
             # sort them, compare them and be done with them
             self.__process_same_types(to_process_1, to_process_2, current_path)
 
-    def __collect_missing_children(self, other_node, source_name: str) -> None:
-        pass
+    def __collect_missing_children(self, other_node, source_name: str, current_path: str) -> None:
+        """
+        Iterates over all given direct descendants in other_node and reports everyone as missing
+
+        :param other_node: the node to report the children of
+        :param source_name: the name of the file where the nodes are missing
+        :param current_path: the path under which the nodes are missing
+        """
+        for node in other_node:
+            self.__sink.error("Could not find node {} in {} under {}".format(node.tag, source_name, current_path))
+        self.__error_cnt += len(list(other_node))
 
     def __compare_attributes(self, attributes_1: Dict[str, str], attributes_2: Dict[str, str], node_path: str) -> None:
         """
