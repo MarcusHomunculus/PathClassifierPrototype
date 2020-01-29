@@ -208,21 +208,38 @@ class XmlDiffer:
             pass
 
         def process_main_nodes(node_1: ElemTree.Element, node_2: ElemTree.Element) -> None:
-            # TODO: write some expressive docu here
+            """
+            Handles the VIN (very important nodes) which the process focuses on
+
+            :param node_1: the root node for main nodes in tree one
+            :param node_2: the root node for main nodes in tree two
+            """
             def find_twin(to_find: str) -> Tuple[bool, ElemTree.Element]:
-                # TODO: I need some docu here
+                """
+                Attempts to find the node with the given URI amongst the children of the second node
+
+                :param to_find: the URI to look for
+                :return: in a boolean if a suitable node could be found and the node itself (if successful)
+                """
                 for candidate in node_2:
-                    candidate_name = candidate.find(".//{}".format(self.__config["uri"]))
+                    candidate_name_node = candidate.find(".//{}".format(self.__config["uri"]))
+                    candidate_name = candidate_name_node.text
                     if candidate_name == to_find:
                         return True, candidate
                 # return a dummy
                 return False, node_2[0]
 
             def get_name_list(to_extract_from: ElemTree.Element) -> List[str]:
-                # TODO: write some nice docu here
+                """
+                Returns the list of URIs that are registered with the child nodes of the given node
+
+                :param to_extract_from: the node to extract the names of the children from
+                :return: all URIs of the direct descendants
+                """
                 names_list = []
                 for name_provider in to_extract_from:
-                    current_name = name_provider.find(".//{}".format(self.__config["uri"]))
+                    current_node = name_provider.find(".//{}".format(self.__config["uri"]))
+                    current_name = current_node.text
                     if current_name is None:
                         raise AttributeError("Main node of type {} is expected to have a node \"{}\" but doesn't".format(
                             name_provider.tag, self.__config["uri"]))
@@ -231,7 +248,8 @@ class XmlDiffer:
 
             processed = []
             for child in node_1:
-                given_name = child.find(".//{}".format(self.__config["uri"]))
+                given_name_node: ElemTree.Element = child.find(".//{}".format(self.__config["uri"]))
+                given_name = given_name_node.text
                 if given_name is None:
                     raise AttributeError("Main node of type {} is expected to have a node \"{}\" but doesn't".format(
                         child.tag, self.__config["uri"]))
