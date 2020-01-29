@@ -51,10 +51,10 @@ class Creator:
                 s += "{} : {}\n".format(attr, self.attributes[attr])
             return s + "List content: {}".format(str(self.skills))
 
-    __sectionList: List[DataStruct] = []
-    __workerList: List[DataStruct] = []
-    __assignments: List[Tuple[DataStruct, DataStruct]] = []
-    __config: Dict[str, str] = {}
+    __sectionList: List[DataStruct]
+    __workerList: List[DataStruct]
+    __assignments: List[Tuple[DataStruct, DataStruct]]
+    __config: Dict[str, str]
 
     def __init__(self, path_to_workers: str, path_to_sections: str):
         """
@@ -65,6 +65,10 @@ class Creator:
         :param path_to_sections: the path to the file containing the section
                                  definitions in JSON formatting
         """
+        self.__sectionList = []
+        self.__workerList = []
+        self.__assignments = []
+        self.__config = {}
         self.read_from_json(path_to_workers, path_to_sections)
         # inform the config file about the global URI -> which is in this case only required by the XML-parser
         self.__config["uri"] = "name"
