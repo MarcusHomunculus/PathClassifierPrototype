@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ElemTree
 from typing import Dict, Tuple, List
 
 from creation.FileSystem import config_from_file
-from evaluation.logging.DiffLogging import DiffLogger
+from evaluation.DiffLogging import DiffLogger
 
 
 class XmlDiffer:
