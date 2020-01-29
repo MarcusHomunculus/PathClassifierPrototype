@@ -1,14 +1,13 @@
-import logging
 import xml.etree.ElementTree as ElemTree
 from typing import Dict, Tuple, List
 
-from creation.FileSystem import create_directories_for, config_from_file
+from creation.FileSystem import config_from_file
+from evaluation.DiffLogging import DiffLogger
 
 
 class XmlDiffer:
 
-    __sink: logging.Logger
-    __log_path: str
+    __sink: DiffLogger
     __error_cnt: int
     __config: Dict[str, str]
     __current_first: str
@@ -21,21 +20,7 @@ class XmlDiffer:
         :param log_path: the path to write the log to
         :param config_path: path to the file to extract config information from
         """
-        create_directories_for(log_path)
-        self.__log_path = log_path
-        self.__sink = logging.getLogger("DiffLogger")
-        fh = logging.FileHandler(self.__log_path)
-        fh.setLevel(logging.ERROR)
-        # create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.ERROR)
-        # create formatter and add it to the handlers
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        ch.setFormatter(formatter)
-        fh.setFormatter(formatter)
-        # add the handlers to logger
-        self.__sink.addHandler(ch)
-        self.__sink.addHandler(fh)
+        self.__sink = DiffLogger("XmlDiff", log_path)
         self.__config = config_from_file(config_path)
 
     def compare(self, first_file: str, second_file) -> None:
@@ -45,8 +30,7 @@ class XmlDiffer:
         :param first_file: the first XML file to read
         :param second_file: the XML file to compare against the first file
         """
-        print("Starting comparision of {} with {}. Writing results to {}".format(first_file, second_file,
-                                                                                 self.__log_path))
+        self.__sink.start(first_file, second_file)
         self.__error_cnt = 0
         tree_1 = ElemTree.parse(first_file)
         tree_2 = ElemTree.parse(second_file)
@@ -56,7 +40,7 @@ class XmlDiffer:
         self.__current_first = first_file
         self.__current_second = second_file
         self._process_node(root_1, root_2, start_path)
-        print("Comparision completed: found {} error".format(self.__error_cnt))
+        self.__sink.finalize()
         # remove the cached names again
         self.__current_first = ""
         self.__current_second = ""
