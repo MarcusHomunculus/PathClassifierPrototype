@@ -2,15 +2,17 @@ import logging
 import xml.etree.ElementTree as ElemTree
 from typing import Dict, Tuple, List
 
-from creation.FileSystem import create_directories_for
+from creation.FileSystem import create_directories_for, config_from_file
 
 
 class XmlDiffer:
 
     __sink: logging.Logger
     __log_path: str
+    __error_cnt: int
+    __config: Dict[str, str]
 
-    def __init__(self, log_path: str):
+    def __init__(self, log_path: str, config_path: str):
         # TODO: write some nice docu here
         create_directories_for(log_path)
         self.__log_path = log_path
@@ -27,17 +29,20 @@ class XmlDiffer:
         # add the handlers to logger
         self.__sink.addHandler(ch)
         self.__sink.addHandler(fh)
+        self.__config = config_from_file(config_path)
 
     def compare(self, first_file: str, second_file) -> None:
         # TODO: I need some docu here
         print("Starting comparision of {} with {}. Writing results to {}".format(first_file, second_file,
                                                                                  self.__log_path))
+        self.__error_cnt = 0
         tree_1 = ElemTree.parse(first_file)
         tree_2 = ElemTree.parse(second_file)
         root_1 = tree_1.getroot()
         root_2 = tree_2.getroot()
         start_path = root_1.tag
         self._process_node(root_1, root_2, start_path, first_file, second_file)
+        print("Comparision completed: found {} error".format(self.__error_cnt))
 
     def _process_node(self, to_process_1: ElemTree.Element, to_process_2: ElemTree.Element, current_path: str,
                       first_name: str, second_name: str) -> None:
@@ -62,6 +67,7 @@ class XmlDiffer:
                 if attributes_1[key] != attributes_2[key]:
                     self.__sink.error("Mismatch in attribute values for {} under {}. {}: {} vs {}: {}".format(key,
                                       node_path, first_name, attributes_1[key], second_name, attributes_2[key]))
+                    self.__error_cnt += 1
                     continue
             keys_2 = list(attributes_2.keys())
             for key in keys_read:
@@ -85,6 +91,7 @@ class XmlDiffer:
                 other = node_2.find(child.tag)
                 if other is None:
                     self.__sink.error("Missing node {} in {}".format(new_path, second_name))
+                    self.__error_cnt += 1
                 processed_nodes.append(child.tag)
                 self._process_node(child, other, new_path, first_name, second_name)
             # check the nodes from file 2 which might have been missed
@@ -95,11 +102,21 @@ class XmlDiffer:
             # report the leftovers
             for tag_name in tags:
                 self.__sink.error("Missing node {}/{} in {}".format(current_path, tag_name, first_name))
+                self.__error_cnt += 1
 
         def calculate_error_distance(reference_node: ElemTree.Element, distance_to: ElemTree.Element) -> int:
-            # TODO: write some awesome docu here
+            """
+            Calculates how much the given nodes differs. For every difference in value or attribute the distance is
+            increased for one
+
+            :param reference_node: the node to use a template
+            :param distance_to: the node to compare against the template
+            :return: the count of differences between the 2 nodes
+            """
             def zero_or_greater(to_eval: int) -> int:
-                # TODO: I short doc string would help here a lot
+                """
+                Returns the value if the value is greater then zero
+                """
                 return to_eval if to_eval > 0 else 0
 
             distance = 0
@@ -110,7 +127,7 @@ class XmlDiffer:
                     distance += 1
                     continue
                 if reference_node.attrib[key] != distance_to.attrib[key]:
-                    distance_to += 1
+                    distance += 1
             distance += zero_or_greater(len(reference_node.attrib) - len(distance_to.attrib))
             return distance
 
@@ -183,10 +200,57 @@ class XmlDiffer:
             result_1 = len(list(node_1)) - len(processed_hashes_1)
             if result_1 > 0:
                 self.__sink.error("Have {} leftover node(s) under {} in {}".format(result_1, current_path, first_name))
+                self.__error_cnt += 1
             result_2 = len(list(node_2)) - len(processed_hashes_2)
             if result_2 > 0:
                 self.__sink.error("Have {} leftover node(s) under {} in {}".format(result_2, current_path, second_name))
+                self.__error_cnt += 1
             pass
+
+        def process_main_nodes(node_1: ElemTree.Element, node_2: ElemTree.Element) -> None:
+            # TODO: write some expressive docu here
+            def find_twin(to_find: str) -> Tuple[bool, ElemTree.Element]:
+                # TODO: I need some docu here
+                for candidate in node_2:
+                    candidate_name = candidate.find(".//{}".format(self.__config["uri"]))
+                    if candidate_name == to_find:
+                        return True, candidate
+                # return a dummy
+                return False, node_2[0]
+
+            def get_name_list(to_extract_from: ElemTree.Element) -> List[str]:
+                # TODO: write some nice docu here
+                names_list = []
+                for name_provider in to_extract_from:
+                    current_name = name_provider.find(".//{}".format(self.__config["uri"]))
+                    if current_name is None:
+                        raise AttributeError("Main node of type {} is expected to have a node \"{}\" but doesn't".format(
+                            name_provider.tag, self.__config["uri"]))
+                    names_list.append(current_name)
+                return names_list
+
+            processed = []
+            for child in node_1:
+                given_name = child.find(".//{}".format(self.__config["uri"]))
+                if given_name is None:
+                    raise AttributeError("Main node of type {} is expected to have a node \"{}\" but doesn't".format(
+                        child.tag, self.__config["uri"]))
+                success, twin = find_twin(given_name)
+                if not success:
+                    self.__sink.error("Could not find a counterpart for {}:{} in {}".format(child.tag, given_name,
+                                                                                            second_name))
+                    self.__error_cnt += 1
+                self._process_node(child, twin, "{}/{}".format(current_path, child.tag), first_name, second_name)
+                processed.append(given_name)
+            # check if there're some left over nodes
+            node_2_names = get_name_list(node_2)
+            for name in processed:
+                if name in node_2_names:
+                    node_2_names.remove(name)
+            for name in node_2_names:
+                self.__sink.error("Could not compare main node {} as {} did not contain one with the same name".format(
+                    name, first_name))
+                self.__error_cnt += 1
 
         def contains_value(to_test: ElemTree.Element) -> bool:
             """
@@ -200,9 +264,11 @@ class XmlDiffer:
                 if to_process_1.text != to_process_2.text:
                     self.__sink.error("Mismatch in values of {}. {}: {} vs. {}: {}".format(current_path, first_name,
                                       to_process_1.text, second_name, to_process_2.text))
+                    self.__error_cnt += 1
             else:
                 self.__sink.error("Missing value in node {} in {}".format(current_path,
                                   second_name if contains_value(to_process_1) else second_name))
+                self.__error_cnt += 1
         if to_process_1.attrib or to_process_2.attrib:
             # compare the attributes
             if to_process_1.attrib and to_process_2.attrib:
@@ -210,6 +276,7 @@ class XmlDiffer:
             else:
                 self.__sink.error("Missing attributes for node {} in file {}".format(current_path,
                                   second_name if to_process_1.attrib else first_name))
+                self.__error_cnt += 1
         # check if children exist at all
         if not to_process_1 or not to_process_2:
             if not to_process_1 and not to_process_2:
@@ -222,12 +289,16 @@ class XmlDiffer:
                 return
         # with children existing check if it is a list of nodes with the all-the-same-name or not
         needs_indexing = self.__has_item_list(to_process_1)
-        if needs_indexing:
-            # sort them, compare them and be done with them
-            process_same_types(to_process_1, to_process_2)
-        else:
+        if not needs_indexing:
             # just go deeper the rabbit hole -> update the path
             process_different_types(to_process_1, to_process_2)
+            return
+        if to_process_1.tag in self.__config["List_nodes"]:
+            # means they can be sorted by their name
+            process_main_nodes(to_process_1, to_process_2)
+        else:
+            # sort them, compare them and be done with them
+            process_same_types(to_process_1, to_process_2)
 
     def __collect_missing_children(self, other_node, source_name: str) -> None:
         pass
