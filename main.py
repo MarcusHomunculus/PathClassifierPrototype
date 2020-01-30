@@ -32,13 +32,13 @@ if __name__ == "__main__":
     default_xml_path = "ref.xml"
     default_target_file = "test.xml"
     default_config_path = "config.toml"
+    worker_cnt = 20
     print("Step one: creating environment:")
     # shall_generate_base = input("Do you want me to generate data for you? (y/n)")
     shall_generate_base = "y"
     if shall_generate_base == "y" or shall_generate_base == "Y":
         # means to generate the json files from stock
         # worker_cnt = int(input("How many workers should be generated?"))
-        worker_cnt = 20
         generate_json(worker_cnt)
     elif shall_generate_base == "n" or shall_generate_base == "N":
         # pass here to cover all other inputs with the else branch
@@ -77,12 +77,9 @@ if __name__ == "__main__":
 
     print("Step five: temper with some data in the xlsx")
     tempered_xml = "ref_updated.xml"
-    updated_workers = "updated.json"
-    FileModifier.XlsxModifier.update_worker_json_to(workerFile, updated_workers)
     # will override the old data.xlsx file -> copy it to a new name as backup
     shutil.copy(default_xlsx_path, "data.old.xlsx")
-    UpdateCreator = Creator.Creator(updated_workers, sectionFile)
-    UpdateCreator.create_xlsx(".", default_xlsx_path, default_nested_dir)
+    FileModifier.XlsxModifier.update_worker_xlsx(worker_cnt, default_xlsx_path)
     manager.generate(tempered_xml)
     differ = XmlDiffer("log/compare_of_updated.log", default_config_path)
     differ.compare(default_xml_path, tempered_xml)
