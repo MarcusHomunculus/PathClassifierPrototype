@@ -2,6 +2,7 @@
 The main routine
 """
 import shutil
+import os
 
 from creation import WorkerCreator, SectionCreator, Creator, FileModifier
 from matcher.MatchingManager import MatchingManager
@@ -46,6 +47,8 @@ if __name__ == "__main__":
     else:
         raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
+    # print an empty line for separation
+    print()
     print("Step two: Generating mock data from JSON")
     # shall_generate_mock = input("Shall I use the existing data to generate mocking data? (y/n)")
     shall_generate_mock = "y"
@@ -60,6 +63,7 @@ if __name__ == "__main__":
     else:
         raise AttributeError("Could not map %s to a 'y' or 'n'".format(shall_generate_base))
 
+    print()
     print("Step three: training")
     # TODO: get a deviating xlsx-path here?
     # m = XmlXlsxMatcher("config.toml", default_xlsx_path)
@@ -71,17 +75,30 @@ if __name__ == "__main__":
     node_count = manager.generate(default_target_file)
     print("Created '{}' with {} nodes".format(default_target_file, node_count))
 
+    print()
     print("Step four: comparing original XML with generated XML")
     differ = XmlDiffer("log/compare.log", default_config_path)
     differ.compare(default_xml_path, default_target_file)
 
+    print()
     print("Step five: temper with some data in the xlsx")
-    tempered_xml = "ref_updated.xml"
+    tempered_xml = "updated.xml"
     # will override the old data.xlsx file -> copy it to a new name as backup
+    print("Before updating the xlsx-file storing the old file as data.old.xlsx")
     shutil.copy(default_xlsx_path, "data.old.xlsx")
     FileModifier.XlsxModifier.update_worker_xlsx(worker_cnt, default_xlsx_path)
     manager.generate(tempered_xml)
     differ = XmlDiffer("log/compare_of_updated.log", default_config_path)
     differ.compare(default_xml_path, tempered_xml)
 
-    print("Done!")
+    print()
+    print("Step six: add an additional worker")
+    print("Creating backup of last xlsx-file under data.updated.xlsx")
+    shutil.copy(default_xlsx_path, "data.updated.xlsx")
+    FileModifier.XlsxModifier.add_worker_to_xlsx(worker_cnt, default_xlsx_path)
+    manager.generate("extended.xml")
+    differ = XmlDiffer("log/compare_of_extended.log", default_config_path)
+    # test against the updated XML as the xlsx was never reset from the update
+    differ.compare(tempered_xml, "extended.xml")
+
+    print(os.linesep + "Done!")
