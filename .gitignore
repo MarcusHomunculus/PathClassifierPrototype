@@ -20,3 +20,6 @@ sections/
 # other organizational stuff
 *_deploy*
 *.zip
+
+# documentation
+doc/
