@@ -4,6 +4,7 @@
 \usepackage{mathtools}
 \usepackage{tikz}
 \usepackage[backend=biber,style=numeric,bibstyle=authortitle,sorting=none]{biblatex}
+\usepackage{bibgerm}
 \begin{filecontents*}[overwrite]{general.bib}
 @conference{rodrigues:scheme_matching_alma,
   author = {Diego Rodrigues and Altigran da Silva and Rosiane Rodriguesm and Eulanda dos Santos},
@@ -76,7 +77,7 @@
 
 \section{Abstrakt}
 Vorgestellt wird ein nicht-deterministisches Verfahren, dass Werte aufgrund ihrer abstrakten Pfade in
-unterschiedlichen Repräsentationen verknüpft um daraus ein ``Bauanleitung'' ableiten zu können. Mit
+unterschiedlichen Repräsentationen verknüpft um daraus eine ``Bauanleitung'' ableiten zu können. Mit
 einem Demonstrator wurde aus der gelernten Beziehung zwischen einer xml- und einer xlsx-Datei die
 xml-Datei rekonstruiert.
 
@@ -90,11 +91,12 @@ in beiden Dateiformaten im Wege. Um diese Hürde nehmen zu können wird hier ein
 Ansatz vorgeschlagen.
 
 \section{Allgemeiner Ansatz}
+\label{sec:approach}
 Im Gegensatz zu bestehenden Software-Werkzeugen, die für ähnliche Aufgaben angestellt werden, soll die
 Assoziation der zugrunde liegenden Daten mit ihrer Bedeutung aufgegeben werden und durch einen
 repräsentierenden\\(Navigations-) Pfad innerhalb der Datei ''abstrahiert'' werden. Alle Pfade, die
 die selbe Information in beiden Dateien reproduzieren konnten werden im \textit{BinClassifier}, der eine
-Liste von Pfad-Histogrammen bzw. ein 2-dimensionales Histogramm als Speicherstruktur aufspannt gespeichert.
+Liste von Pfad-Histogrammen bzw. ein 2-dimensionales Histogramm als Speicherstruktur aufspannt, gespeichert.
 Gesammelt wird die Häufigkeit des Auftretens von Paarungen in vorzugsweise ein-eindeutigen ''Töpfen''
 (Bins), wie in Abb. \ref{classifier_table} angedeutet.
 
@@ -121,19 +123,19 @@ einem Namen vereint und in signifikanter Anzahl in der Quelldatei vorkommt: Beis
 DeviceAccessPointItem und ModuleItem} müssen in ihrer Struktur homogen sein, während die Werte über die
 Mitglieder einer Klasse heterogen sein müssen. Für die Anzahl der Klassenattributwerte muss dabei gelten:
 \begin{displaymath}
- \lvert V \rvert \ll \lvert A \rvert \cap \lvert B \rvert
+ \lvert A \cap B \rvert \ll \lvert A \rvert + \lvert B \rvert
 \end{displaymath}
 wobei $A$ und $B$ die Menge der Werte zweier unterschiedlicher Attribute einer Datenklasse darstellt.\newline
 Außerdem sollten sich etwaige Fehler in beiden Dateien nach der geometrischen Häufigkeitsverteilung
-verteilen, so für ein Attribute $A_i$ der Attributmenge $A$ gilt:
+verteilen, so dass für ein Attribute $A_i$ der Attributmenge $A$ gilt:
 \begin{displaymath}
- P_{mismatch} (A_i) = P_{\lvert A\rvert \cap\lvert B\rvert} + P_{geom} \ll 50\%
+ P_{mismatch} (A_i) = P_{\lvert A\cap B\rvert} + P_{error,geom} < 0.5
 \end{displaymath}
 
 \section{Trainingsprozess}
 Für das Training werden Paare aus aus Werten und Identifizierern der unterschiedlichen Instanzen der
 Datenklasse(n) unter einem Navigationpfad aus der Quelldatei entnommen. Der Quellpfad wird im
-Classifier registriert und es wird jeder erfolgreiche Versuch ein Wert-Name-Paar unter einem
+Classifier registriert und es wird jeder erfolgreiche Fund eines Wert-Name-Paars unter einem
 Navigationspfad aus der Zieldatei registriert bzw. inkrementiert. Um den Signal-Rausch-Abstand zu
 erhöhen können für den Zielpfad zusätzliche Voraussetzungen definiert werden.
 
@@ -141,11 +143,12 @@ erhöhen können für den Zielpfad zusätzliche Voraussetzungen definiert werden
 Durch die Abstraktion zu Pfaden wird die Begrenzung durch unterschiedliche Datenstrukturen aufgebrochen,
 was es dem Algorithmus erlaubt, sich auf Änderungen einzustellen und durch erneutes Training auf
 Strukturänderungen einzugehen: so soll das bishergen ''händische'' pflegen von der GSDML weitestgehend
-eleminiert werden. Gleichzeitig kann das abgeleitete 2-dimensionale Histogramm von einem Menschen
-interpretiert werden und notfalls von einem Menschen korrigierend eingegriffen werden. Neuronale Netze,
-die sonst bei ähnlichen Aufgabenstellungen eingesetzt werden bieten diesen Einblick nicht.
+eliminiert werden. Gleichzeitig kann das abgeleitete 2-dimensionale Histogramm von einem Menschen
+interpretiert werden und notfalls korrigierend eingegriffen werden. Neuronale Netze, die sonst bei
+ähnlichen Aufgabenstellungen eingesetzt werden bieten diesen Einblick nicht.
 
 \section{Verwandte Technologien}
+\label{sec:research}
 Die vorgestellte Lösung sollte wohl zwischen den Forschungsfeldern \textit{scheme matching} und
 \textit{value matching} einzuordnen sein: während sich anhand von \cite{rodrigues:scheme_matching_alma}
 oder \cite{gou:source_xml} erkennen lässt, dass sich scheme matching auf das Finden von Feldern
@@ -164,26 +167,40 @@ Beschränkungen, wie z.B. einen farblich abgetrennten Tabellenkopf konnte bei fe
 fast eindeutige Pfadzuordnung erreicht werden, wie Abb. \ref{classifier_ex} entnommen werden kann.
 \begin{figure}[h]
  \centering
- \includegraphics[scale=0.4]{example_table}
+ \includegraphics[scale=0.25]{example_table}
  \caption{Pfadzuordnung der Daten aus dem Proof-of-concept mit 20 Arbeitern. An der Seite stehen die Pfade aus
           der XML-Datei, im Tabellenkopf stehen die Pfade aus den Excel-Dateien}
  \label{classifier_ex}
 \end{figure}
 Für die Implementierung des Projektes hat sich eine Trennung der Aufgaben nach Dateien und dem Classifier angeboten.
-Um zwischen den 3 Modulen zu vermitteln wurde noch ein zusätlicher Managing-Layer eingezogen: die Projektorganisation des Proof-of-concept kann Abb. \ref{project_structure} entnommen werden.
+Um zwischen den 3 Modulen zu vermitteln wurde noch ein zusätlicher Managing-Layer eingezogen, in dessen Verantwortung
+die Kommunikation der Module sowieso das Aussortieren\footnote{Diese Aufgabe kann auch bzw. sollte im Classifier
+angesiedelt werden} der Pfadkandidaten ist. Die Projektorganisation des Proof-of-concept kann Abb.
+\ref{project_structure} entnommen werden.
 \begin{figure}
  \centering
- \includegraphics[scale=0.5]{ProjektStruktur}
+ \includegraphics[scale=0.3]{ProjektStruktur}
  \caption{Prinzipieler Aufbau des Proof-of-concept in Modulen}
  \label{project_structure}
 \end{figure}
 
-\section{Zusammenfassung}
-Vorgestellt wurde der so getaufte \textit{Bin-Classifier}, dessen Neuerungen darin bestehen, dass Werte unabhängig
-von ihrer Bedeutung auf Navigationpfade abstrahiert werden und in einem 2-dimensionalen Histogramm gesammelt werden.
-Um Änderungen aus der Zieldatei in die (oder eine neue) Quelldatei zu übertragen müssen nur noch die Pfade-Paare
-interpretiert werden.
+\section{Anwendung auf die GSDML}
+Für die Beziehung zwischen Excel-Spezifikation und GSDML sollten die in Abs. \ref{sec:approach} genannten
+Anforderungen durchweg erfüllt sein\footnote{Durch die hohe Sorgfalt bei der Erstellung der GSDML ist die geometrische
+Verteilung eher ein Worst-case-Szenario}. Gleiche Werte werden hauptsächlich im gleichen semantischem Zusammenhang
+auftreten, was keine negativen Auswirkungen auf das korrekte ``Matching'' hat. Die größte Herausforderung ist
+bei den komplexeren Tabellenorganisationen in der Spezifikation zu erwarten, die im Proof-of-concept nur in
+ihren Grundzügen abgebildet wird. Ein weiterer Punkt ist, dass die GSDML historisch bedingte Abweichungen von
+der Spezifikation hat: diese müssen in einem Post-Processing-Schritt nachträglich eingearbeitet werden. Für den
+Wertevergleich sollte ein robuster Vergleich implementiert werden, z.B. die Levenshtein-Distanz\footnote{Komplexe
+Lösungen wie die, auf die in Abs. \ref{sec:research} verwiesen wird, bringen keinen Mehrwert}.
 
+\section{Zusammenfassung}
+Vorgestellt wurde der so getaufte \textit{Bin-Classifier}-Verfahren, dessen Neuerungen darin bestehen, dass Werte
+unabhängig von ihrer Bedeutung und Quelle auf Navigationpfade abstrahiert werden und in einem
+2-dimensionalen Histogramm gesammelt werden. Da die Pfade immer auf das erste Element einer Datenklasse bezogen sind,
+kann flexibel auf eine Änderung der Anzahl reagiert werden, wenn es um die Erzeugung eines Abbildes in dem anderem
+Datenformat geht.
 
 \printbibliography
 
