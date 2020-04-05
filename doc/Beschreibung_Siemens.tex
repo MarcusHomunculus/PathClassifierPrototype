@@ -5,67 +5,7 @@
 \usepackage{tikz}
 \usepackage[backend=biber,style=numeric,bibstyle=authortitle,sorting=none]{biblatex}
 \usepackage{bibgerm}
-\begin{filecontents*}[overwrite]{general.bib}
-@conference{rodrigues:scheme_matching_alma,
-  author = {Diego Rodrigues and Altigran da Silva and Rosiane Rodriguesm and Eulanda dos Santos},
-  year = {2015},
-  title = {Using active learning techniques for improving database schema matching methods},
-  booktitle = {2015 International Joint Conference on Neural Networks (IJCNN)}
-}
-
-@conference{jiuzhen:xml_schema,
-  author = {Zhao Jiuzhen and Zhang Shidong and Yan Zhongmin},
-  year = {2009},
-  title = {A Novel Method for XML Scheme Matching},
-  booktitle = {2009 International Forum on Information Technology and Applications}
-}
-
-@conference{gou:source_xml,
-  author = {Heping Gou and Yongxia Jing and Baiming Feng and Yong Li},
-  year = {2012},
-  title = {A Scheme of Information Integration Based on XML Description and Schema Matching},
-  booktitle = {2012 Fourth International Conference on Computational and Information Sciences}
-}
-
-@conference{boettcher:data_mapping,
-  author = {Stefan Böttcher and Sven Groppe},
-  year = {2003},
-  title = {Automated data mapping for cross enterprise data integration},
-  booktitle = {2003 International Conference on Enterprise Information Systems}
-}
-
-@online{dozer:dozer,
-  year = {2019},
-  title = {Dozer},
-  url = {https://github.com/DozerMapper/dozer},
-  urldate = {2020-02-02}
-}
-
-@online{halterman:modelmapper,
-  author = {Jonathan Halterman},
-  year = {2019},
-  title = {modelmapper},
-  url = {http://modelmapper.org/},
-  urldate = {2020-02-02}
-}
-
-@online{adverity:adverity,
-  year = {2020},
-  title = {Adverity},
-  url = {https://www.adverity.com/analytics-platform/data-integration/},
-  urldate = {2020-02-02}
-}
-
-@online{altova:mapforce,
-  author = {Altova},
-  year = {2020},
-  title = {Datenmapping-Tools},
-  url = {https://www.altova.com/de/mapforce},
-  urldate = {2020-02-02}
-}
-\end{filecontents*}
-
-\addbibresource{general.bib}
+\addbibresource{lib.bib}
 
 %opening
 \title{BinClassifier}
@@ -167,7 +107,7 @@ Beschränkungen, wie z.B. einen farblich abgetrennten Tabellenkopf konnte bei fe
 fast eindeutige Pfadzuordnung erreicht werden, wie Abb. \ref{classifier_ex} entnommen werden kann.
 \begin{figure}[h]
  \centering
- \includegraphics[scale=0.25]{example_table}
+ \includegraphics[scale=0.25]{img/example_table}
  \caption{Pfadzuordnung der Daten aus dem Proof-of-concept mit 20 Arbeitern. An der Seite stehen die Pfade aus
           der XML-Datei, im Tabellenkopf stehen die Pfade aus den Excel-Dateien}
  \label{classifier_ex}
@@ -179,7 +119,7 @@ angesiedelt werden} der Pfadkandidaten ist. Die Projektorganisation des Proof-of
 \ref{project_structure} entnommen werden.
 \begin{figure}
  \centering
- \includegraphics[scale=0.3]{ProjektStruktur}
+ \includegraphics[scale=0.3]{img/ProjektStruktur}
  \caption{Prinzipieler Aufbau des Proof-of-concept in Modulen}
  \label{project_structure}
 \end{figure}
