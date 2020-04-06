@@ -5,11 +5,10 @@
 \usepackage{tikz}
 \usepackage[backend=biber,style=ieee,bibstyle=authortitle,sorting=none]{biblatex}
 \addbibresource{lib.bib}
-\usepackage{listings}
 
 \begin{document}
 
-\title{Generate data associations in different file types for the purpose of file generation}
+\title{Automatically generating data associations over different file types}
 \author{\IEEEauthorblockN{Marcus Schlutter}
 \IEEEauthorblockA{Siemens AG\\
 		  Chemnitz, Germany\\
@@ -20,15 +19,15 @@
 
 \begin{abstract}
 This document proposes an algorithm to match file content / data associations in different file
-types for the purpose to use the the associations to generate one file from the other. The
-proposal is independent from the underlying data but dependent on the arrangment of the data which
+types for the purpose to use the associations to generate one file from the other. The proposal
+is independent from the underlying data but dependents on the arrangment of the data which
 must support a path-like addressing scheme to select the correct path based on simple majority.
 The principle is shown on a scenario where data is present in multiple docx-files and a single
 XML-file with the objective to generate the XML-file.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Machine Learning-like, inter-file generation, Office-digitalization, XML
+Machine Learning-like, file generation, data associations, Office-digitalization, XML
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -55,7 +54,8 @@ For the proposed algorithm to work as expected some prerequisite have to be form
         subset of the data available.
  \item In both groups the contained data is arranged in a way that every field of this complex
         data structures can be addressed individually.
- \item The data within this data structures need to be heterogenous
+ \item The data within this data structures need to be heterogenous (between the different
+        fields)
 \end{enumerate}
 
 \section{Procedure}
@@ -106,33 +106,50 @@ After all matches had been made correctly (intervention is possible by manually 
 histogram-structure) the \textit{target}-file can be derived from the \textit{source}-files in
 case the later are modified or extended. Structural changes can be compensated by ``re-training''
 the system.\\As the main goal of the algorithm is to pick the right ``bin'' in the histogram it
-has been named \textit{BinClassifier}.
+has been named \textit{Naive BinClassifier}.
 
 \section{Implementation example}
 To outline the core principles and give a better understanding of applying the proposed algorithm
 to real world problems this chapter presents the implementation steps for transforming tables in
-form of docx-files into a XML-file. Both contain data of a ficticious company.
-\begin{lstlisting}[language=XML,caption={Reduced \textit{source} XML file},label=xml_start]
-<?xml version="1.0" encoding="utf-8"?>
-<company>
- <general>
-  ...
- </general>
- <company_structure>
-  <sections>
-   <section>
-    <name>Human Resource</name>
-    ...
-   </section>
-  </sections>
- </company_structure>
-</company>
-\end{lstlisting}
-The XML files content is shown in Listing \ref{xml_start}.
+form of docx-files into a XML-file. Both contain data of a ficticious company.\\The XML-file will
+contain only a subset of the information provided by multiple docx-files. For ease of
+implementation the nodes of interest were provided via a configuration file: the company sections
+and the list of workers.\\
+In the docx-files data was distributed over multiple sheets with one column that referenced to
+another file. The assignment of workers to their sections is arranged in a so called cross-table:
+the workers listed on the side, the sections listed on the top and the spanned rectangle is filled
+with 'x' at the correct place. All table-headers are separated by the actual data by a different
+background of cell.
 
-\subsection{Challenges}
-The presented situation contains multiple challenges. The data in tables is distributed over multiple
-sheets and some cells refer to a separate file.
+\subsection{Project organisation}
+\begin{figure}[h]
+ \centering
+ \includegraphics[scale=0.3]{img/ProjectStructure_en}
+ \caption{Project organisation for example project}
+ \label{project_structure}
+\end{figure}
+
+Both file types need to be addressable via path: this was achieved by creating specialized
+wrapper-classes as shown in figure \ref{project_structure}. For XML XPath could be applied, for
+docx a path was constructed using the filename, the sheet name and cell addressing with column and
+row. To detect the type of table in the docx-file the different types are tried and the correct
+selection is left to the classifier.
+\begin{figure}[ht]
+ \centering
+ \includegraphics[scale=0.39]{img/example_table}
+ \caption{Collection and Selection result for 20 workers distributed over 6 sections}
+ \label{example_table}
+\end{figure}
+As figure \ref{example_table} shows does this yield good results. For generating the XML file in
+the later process the original XML was stripped of the matched paths (which was namely the worker
+and section parts) and assumed constant. For the given scenario a worker count below 11 broke the
+algorithm as values became to homogenous.
+
+\section{Summary}
+In this document an algorithm was presented which is capable of ``learning'' data associations
+between different file types called \textit{Naive BinClassifier}. This algorithm decides over
+associations by majority of path-pairings which worked well in a case study presented as an
+example.
 
 \printbibliography
 
