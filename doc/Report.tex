@@ -3,6 +3,7 @@
 \usepackage[cmex10]{amsmath}
 \usepackage{enumitem}
 \usepackage{tikz}
+\usetikzlibrary{calc}
 \usepackage[backend=biber,style=ieee,bibstyle=authortitle,sorting=none]{biblatex}
 \addbibresource{lib.bib}
 
@@ -70,19 +71,20 @@ paired with their addressing path. Paths should be constructed independent of th
 complex structure but specific to they field they represent.
 \begin{figure}[h]
   \centering
- \begin{tikzpicture}
-  \draw (1,2.4) -- (1,1) -- (4.4,1);
-  \draw[step=0.5] (1,1) grid (4.4,2.4);
-  \foreach \x/\i in {1.1/0, 1.6/1, 2.1/2, 2.6/3, 3.1/4, 3.6/5}
+  \scalebox{0.64}{
+  \begin{tikzpicture}
+   \draw (1,2.4) -- (1,1) -- (4.4,1);
+   \draw[step=0.5] (1,1) grid (4.4,2.4);
+   \foreach \x/\i in {1.1/0, 1.6/1, 2.1/2, 2.6/3, 3.1/4, 3.6/5}
     \node[label={[label distance=-6.5em, text depth=-1ex,rotate=90]right: \textit{target}-path \i}]
-            at (\x,1) {};
-  \foreach \y/\i in {1.3/0, 1.8/1}
+          at (\x,1) {};
+   \foreach \y/\i in {1.3/0, 1.8/1}
     \node[label={[label distance=1, text depth=-1ex]left: \textit{source}-path \i}]
             at (1,\y) {};
-  \node at (1.25,1.25) {4};
-  \node at (2.25,1.75) {7};
-  \node at (3.75,1.25) {11};
- \end{tikzpicture}
+   \node at (1.25,1.25) {4};
+   \node at (2.25,1.75) {7};
+   \node at (3.75,1.25) {11};
+ \end{tikzpicture}}
  \caption{2-dimensional histogram for storing path-pairs}
  \label{classifier_table}
 \end{figure}
@@ -109,41 +111,76 @@ the system.\\As the main goal of the algorithm is to pick the right ``bin'' in t
 has been named \textit{Naive BinClassifier}.
 
 \section{Implementation example}
-To outline the core principles and give a better understanding of applying the proposed algorithm
-to real world problems this chapter presents the implementation steps for transforming tables in
-form of docx-files into a XML-file. Both contain data of a ficticious company.\\The XML-file will
-contain only a subset of the information provided by multiple docx-files. For ease of
-implementation the nodes of interest were provided via a configuration file: the company sections
-and the list of workers.\\
-In the docx-files data was distributed over multiple sheets with one column that referenced to
-another file. The assignment of workers to their sections is arranged in a so called cross-table:
-the workers listed on the side, the sections listed on the top and the spanned rectangle is filled
-with 'x' at the correct place. All table-headers are separated by the actual data by a different
-background of cell.
-
-\subsection{Project organisation}
+To give the reader a better idea of the application and the limits of the algorithm this section
+will give an in-depth view in the prototype which was created as a demonstrator. As mocking
+data an XML- and multiple docx-file(s) about a fictious company was created. The XML-file (as
+the file to generate) contained data that could be completly found in the docx-files: this was
+data to describe the departments and the workers of that company. The departments were described
+with properties like:\newline
+name of the department, the workers associated, teams in the department with a name and a worker
+count\newline
+Workers had properties like:
+an ID, a name, profession, etc.\newline
+In the XML-file worker-trees and department-trees were child nodes to respective nodes creating
+2 separate lists in the XML within a greater tree. Data in the docx-files was organized in tables
+with one main docx-files and references to other docx-file in the main file. The worker to 
+department association was expressed as a table like shown in figure \ref{cross_table}. All
+table headers had a distinctive background color.
 \begin{figure}[h]
  \centering
- \includegraphics[scale=0.3]{img/ProjectStructure_en}
+ \scalebox{0.64}{
+ \begin{tikzpicture}
+  %\draw(1.5,0) -- (1.5,1.5) -- (4,1.5);
+  \fill [orange!25] (-1,0) rectangle (4,3.5);
+  \fill [yellow!10] (1.5,0) rectangle (4,1.5);
+  \foreach \x in {1.5,2,2.5,3,3.5}
+    \draw (\x,0) -- (\x,3.5);
+  \foreach \x/\i in {1.75/0,2.25/1,2.75/2,3.25/3,3.75/4}
+    \node[rotate=90] at (\x,2.5) {worker \i};
+  \foreach \y in {0.5,1,1.5}
+    \draw (-1,\y) -- (4,\y);
+  \foreach \y/\i in {0.25/2,0.75/1,1.25/0}
+    \node at (0.25,\y) {department \i};
+  \node at (2.25,1.25) {X};
+  \node at (3.25,0.75) {X};
+ \end{tikzpicture}}
+ \caption{Department to worker association as a \textit{cross table}}
+ \label{cross_table}
+\end{figure}
+
+\subsection{Project organisation}
+To extract the paths from the XML and the docx-files for both types wrappers / translators
+were created. For the XML-wrapper a subset of XPath could be used as output while for the
+docx-files an own scheme had to be created using the file name, the sheet, the column and
+row. The project structure explained in this section is displayed in figure
+\ref{project_structure}.
+\begin{figure}[h]
+ \centering
+ \includegraphics[scale=0.16]{img/ProjectStructure_en}
  \caption{Project organisation for example project}
  \label{project_structure}
 \end{figure}
+To yield a more robust matching the XML-wrapper would create triples of
+the form: XML-path, object-ID and field-value. The tag for the name of the root-node and
+the node of the object-ID were provided via a config-file. Having the ID and the associated
+value allowed to detected the orientation of a docx-table which the wrapper knew 3 types of:
+a horizontal aligned table, a vertical one and the cross table displayed in figure
+\ref{cross_table}. The table header (of different color) was detected to point to the first
+field which simplified matching in the classifier and for the file generation. Having the
+name cell location also increased robustness in case the tables would be unordered to each
+other. As a final step the target-file was stripped of its object entries in the list nodes
+and used as template for files to generate.
 
-Both file types need to be addressable via path: this was achieved by creating specialized
-wrapper-classes as shown in figure \ref{project_structure}. For XML XPath could be applied, for
-docx a path was constructed using the filename, the sheet name and cell addressing with column and
-row. To detect the type of table in the docx-file the different types are tried and the correct
-selection is left to the classifier.
+\subsection{Example results}
+Figure \ref{example_table} shows the result for this approach with the company employing 20
+workers. The algorihm broke with a worker count below 11 as the department sizes interfered
+with the team sizes within the docx-files (violation of the inhomogenity requirement).
 \begin{figure}[ht]
  \centering
- \includegraphics[scale=0.39]{img/example_table}
+ \includegraphics[scale=0.41]{img/example_table}
  \caption{Collection and Selection result for 20 workers distributed over 6 sections}
  \label{example_table}
 \end{figure}
-As figure \ref{example_table} shows does this yield good results. For generating the XML file in
-the later process the original XML was stripped of the matched paths (which was namely the worker
-and section parts) and assumed constant. For the given scenario a worker count below 11 broke the
-algorithm as values became to homogenous.
 
 \section{Summary}
 In this document an algorithm was presented which is capable of ``learning'' data associations
