@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter, column_index_from_string
 from matcher.enum.CellPropertyType import CellPropertyType
 from matcher.xlsx.clustering.CellMatching import CellMatchingStruct, CellMatchResult
 from matcher.xlsx.location.CellPositioning import CellPosition, CellPositionStruct, CellPositionStructType
-from classifier.BinClassifier import BinClassifier
+from classifier.PathClassifier import PathClassifier
 from classifier.error.MatchExceptions import ForwardFileNotFound
 from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xlsx.clustering.CrossTableStruct import CrossTableStruct
@@ -24,13 +24,13 @@ class XlsxProcessor:
     TEMPLATE_CELL_ADDRESS_ROW_WISE = "${}{}:{}"
     TEMPLATE_CELL_ADDRESS_COL_WISE = "{}${}:{}"
 
-    __classifier: BinClassifier
+    __classifier: PathClassifier
     __config = {}
     __root_xlsx: str
     __nested_xlsx_dir: str
 
     def __init__(self,
-                 sink: BinClassifier,
+                 sink: PathClassifier,
                  config: Dict[str, str],
                  path_root_xlsx: str,
                  nested_xlsx_dir: str = "nested/"):

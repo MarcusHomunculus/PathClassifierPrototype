@@ -5,7 +5,7 @@ from classifier.internal.PathHistogram import PathHistogram
 from classifier.error.MatchExceptions import MultipleMatchingCandidatesException
 
 
-class BinClassifier:
+class PathClassifier:
 
     __mat: List[PathHistogram]
     __last_source: str

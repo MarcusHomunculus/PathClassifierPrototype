@@ -6,7 +6,7 @@ import os
 from xml.dom import minidom
 import copy
 
-from classifier.BinClassifier import BinClassifier
+from classifier.PathClassifier import PathClassifier
 from matcher.clustering.ValueNamePair import ValueNamePair
 from matcher.xml.generation.GeneratorCluster import GeneratorStruct, PathCluster, ValuePathStruct
 from creation.FileSystem import create_directories_for
@@ -14,14 +14,14 @@ from creation.FileSystem import create_directories_for
 
 class XmlProcessor:
 
-    __classifier: BinClassifier
+    __classifier: PathClassifier
     __config: Dict[str, str]
     __targets: List[(str, List[ValueNamePair])]
     __source_path: str
     __name_nodes: Set[str]
     __template_path: str
 
-    def __init__(self, sink: BinClassifier, config: Dict[str, str]):
+    def __init__(self, sink: PathClassifier, config: Dict[str, str]):
         """
         The constructor
 

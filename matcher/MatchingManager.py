@@ -5,7 +5,7 @@ from matcher.xlsx.XlsxProcessor import XlsxProcessor
 from matcher.xml.XmlProcessor import XmlProcessor
 from matcher.xml.generation.GeneratorCluster import ValuePathStruct, PathCluster
 from matcher.visualization.HtmlWriter import HtmlWriter
-from classifier.BinClassifier import BinClassifier
+from classifier.PathClassifier import PathClassifier
 from creation.FileSystem import create_directories_for, config_from_file
 
 
@@ -14,7 +14,7 @@ class MatchingManager:
     __xlsx_handler: XlsxProcessor
     __xml_handler: XmlProcessor
     __config: Dict[str, str]
-    __classifier: BinClassifier
+    __classifier: PathClassifier
     # store these files to bind them to the program
     __source_path: str
     __sink_path: str
@@ -29,7 +29,7 @@ class MatchingManager:
         :param config_path: the path to the config (toml-) file
         :param log_file: the file path under which to store the log file
         """
-        self.__classifier = BinClassifier()
+        self.__classifier = PathClassifier()
         self.__config = config_from_file(config_path)
         # prepare the "workspace" for the log
         create_directories_for(log_file)
