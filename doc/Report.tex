@@ -1,6 +1,7 @@
 \documentclass[conference]{IEEEtran}
 \usepackage{graphicx}
 \usepackage[cmex10]{amsmath}
+\usepackage{amssymb}
 \usepackage{enumitem}
 \usepackage{tikz}
 \usetikzlibrary{calc}
@@ -20,10 +21,10 @@
 
 \begin{abstract}
 This document proposes an unsupervised learning algorithm to match file content / data
-associations in different file types for the purpose to use the associations to generate
+associations in different file types for the purpose of using this associations to generate
 one file from the other. The proposal is independent from the underlying data but
 dependents on the arrangment of the data which must support a path-like addressing scheme
-to select the correct path based on simple majority.
+to select the correct path based on expectation value.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -66,9 +67,10 @@ structure which can be visualized as a 2-dimensional histogram which stores path
 occurances.
 
 \subsection{Collection-Phase}
-All values available in the first file ie. \textit{target}-file are to be extracted and
-paired with their addressing path. Paths should be constructed independent of the current
-complex structure but specific to they field they represent. In the next step this
+All values available in the first file ie. \textit{target}-file are extracted and
+paired with their addressing path: $m_i = (\psi_{i,src}, \psi_{i,tgt}$; with $\psi$ as a path and
+$m \in M$ as on pair of all possible pairs $M$. Paths should be constructed independent of the current
+complex structure but specific to the field they represent. In the next step this
 collection is compared against the values in the group of \textit{source}-file(s) were
 every match is recorded in the forementioned 2-dimensional histogram. Figure
 \ref{classifier_table} shows an examplary arrangment. In the next step the collected data
@@ -94,16 +96,11 @@ is evaluated.
 \end{figure}
 
 \subsection{Selection-Phase}
-In this step from all possible path combinations the one considered correct is to be selected.
-This is resolved interpreting the problem as a simple case of the \textit{Byzantine Generals
-Problem} as described in \cite{lamport:byzantine}. From this concept also the limitations can
-be inherited: for every path-match $p_i$ the final pair $p$ is derived via
-$majority(p_1, p_2, ...,p_n)$ under the assumption that $n \geq 2k + 1$ with $k$ being the
-count of errors. An error might manifest either as a wrong path-pair due to the value is
-matched multiple times for different data structure fields or a correct match could not be
-made due to the \textit{target}-file containing a false value (compared to the content of
-the corresponding \textit{source}-file). Which introduces a certain robustness against
-human errors unintentionally inserted when creating former target files.
+In this step from all possible path combinations the one considered correct is to be selected
+which is equal to the expectation value $r_i^{(1)}$ which derives as
+$$ r_i^{(1)} = E \{m_i (M)\} | r_i \neq r_{i+1}; i \in \mathbb{N}^0 $$
+This way even human errors in the form of wrong values in the previously created \textit{target}-
+file can be compensated.
 
 \subsection{Generation}
 After all matches had been made correctly (intervention is possible by manually altering the
